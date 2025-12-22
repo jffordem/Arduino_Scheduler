@@ -15,10 +15,16 @@
 
 #include <Mouse.h>
 #include <Keyboard.h>
+#include <Wire.h>
 #include <Scheduler.hpp>
 #include <EncoderWheel.hpp>
 #include <ButtonHandler.hpp>
 #include <HIDIO.hpp>
+
+#include <LK204_25.hpp>
+#include <Display.hpp>
+#include <MenuUI.hpp>
+#include <KeypadHandler.hpp>
 
 #include <LeonardoConfig.hpp>
 //#include <BreadboardConfig.hpp>
@@ -45,14 +51,55 @@ DummyButton saveKey("SAVE", true);
 PressFollower rightDelayButton(schedule, 150, rightMouseButton);
 PressComposite mouseButtons(&leftMouseButton, &rightDelayButton);
 
-ButtonController buttonController(schedule, upTime, downTime, mouseButtons);
+ButtonController leftCastController(schedule, upTime, downTime, leftMouseButton);
+ButtonController rightCastController(schedule, upTime, downTime, rightDelayButton);
 ButtonController saveController(schedule, saveTime, keyPressDelay, saveKey);
-EnableComposite controller(&buttonController, &saveController);
+EnableComposite controller(&leftCastController, &rightCastController, &saveController);
 
 EncoderControl<long> castRate(schedule, Config.Left.Encoder, upTime, -20, upTime*2);
 EncoderControl<long> castTime(schedule, Config.Right.Encoder, downTime, -20, downTime*2);
 
 ToggleButton leftButton(schedule, Config.Left.Button, controller);
+
+Enabled &leftCasting = leftCastController;
+Enabled &rightCasting = rightCastController;
+
+LK204_25_LCD lcd;
+LK204_25_Keypad keypad;
+
+static void menuBack(MenuContext &ctx) { ctx.pop(); }
+
+MenuItem timingItems[] = {
+	MenuItem::EditLong("Set up-time", upTime, 25),
+	MenuItem::EditLong("Set down-time", downTime, 25),
+	MenuItem::Action("Back", &menuBack)
+};
+MenuScreen timingMenu("Timing", timingItems, (int)(sizeof(timingItems) / sizeof(timingItems[0])));
+
+MenuItem rootItems[] = {
+	MenuItem::Submenu("Timing...", &timingMenu),
+	MenuItem::Toggle("Toggle left cast", leftCasting),
+	MenuItem::Toggle("Toggle right cast", rightCasting),
+	MenuItem::Action("Back", &menuBack)
+};
+MenuScreen rootMenu("Skyrim Dual Cast", rootItems, (int)(sizeof(rootItems) / sizeof(rootItems[0])));
+
+MenuContext menu(rootMenu);
+MenuRenderer<LK204_25_LCD, 4, 20> menuRenderer(menu);
+MainDisplay<LK204_25_LCD, 4, 20> mainDisplay(schedule, lcd, menuRenderer, 125, 5000L);
+
+MenuKeymap keymap = {
+	/*up*/ KeypadKey_2,
+	/*down*/ KeypadKey_8,
+	/*back*/ KeypadKey_D,
+	/*select*/ KeypadKey_A,
+	/*line1*/ KeypadKey_A,
+	/*line2*/ KeypadKey_B,
+	/*line3*/ KeypadKey_C,
+	/*line4*/ KeypadKey_D
+};
+MenuKeypadController menuKeys(menu, keymap);
+KeypadHandler keypadHandler(schedule, keypad, menuKeys);
 
 void setup() {
 #ifdef DEBUG
@@ -60,7 +107,14 @@ void setup() {
 #endif
   Mouse.begin();
   Keyboard.begin();
-  controller.enable(false);
+
+	keypad.begin();
+	mainDisplay.begin();
+
+	leftCasting.enable(false);
+	rightCasting.enable(false);
+	controller.enable(false);
+	schedule.begin();
 }
 
 void loop() {

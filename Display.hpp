@@ -26,46 +26,141 @@ SOFTWARE.
 #define DISPLAY_HPP
 
 #include <Scheduler.hpp>
-#include <Graphics.hpp>
+#include <Clock.hpp>
+#include <string.h>
+#include <stdio.h>
 
-template <class TDisplay>
-class MainDisplay : private Scheduled, private Timer {
-    TDisplay &_display;
-    Drawable<TDisplay> &_drawable;
+template <int TRows, int TCols>
+class DisplayBuffer {
+	char _data[TRows][TCols];
 public:
-    MainDisplay(Schedule &schedule, TDisplay &display, Drawable<TDisplay> &drawable, long period) : 
-        Scheduled(schedule), Timer(period), _display(display), _drawable(drawable) { }
+	static const int Rows = TRows;
+	static const int Cols = TCols;
+	DisplayBuffer(char fill = ' ') { clear(fill); }
+	void clear(char fill = ' ') {
+		for (int r = 0; r < TRows; r++) {
+			for (int c = 0; c < TCols; c++) {
+				_data[r][c] = fill;
+			}
+		}
+	}
+	char get(int row, int col) const { return _data[row][col]; }
+	void set(int row, int col, char ch) {
+		if (row < 0 || row >= TRows || col < 0 || col >= TCols) return;
+		_data[row][col] = ch;
+	}
+	void write(int row, int col, const char *text, int width = -1) {
+		if (!text) text = "";
+		if (width < 0) width = (int)strlen(text);
+		for (int i = 0; i < width; i++) {
+			char ch = text[i];
+			if (ch == 0) ch = ' ';
+			set(row, col + i, ch);
+		}
+	}
+};
+
+template <class TDisplay, int TRows = 4, int TCols = 20>
+class DisplayDrawable {
+public:
+	virtual void draw(DisplayBuffer<TRows, TCols> &buffer) = 0;
+};
+
+template <class TDisplay, int TRows = 4, int TCols = 20>
+class MainDisplay : private Scheduled {
+    TDisplay &_display;
+    DisplayDrawable<TDisplay, TRows, TCols> &_drawable;
+ 	Timer _tick;
+ 	Timer _full;
+ 	DisplayBuffer<TRows, TCols> _desired;
+ 	DisplayBuffer<TRows, TCols> _flushed;
+ 	bool _hasFlushed;
+public:
+    MainDisplay(Schedule &schedule, TDisplay &display, DisplayDrawable<TDisplay, TRows, TCols> &drawable, long period, long fullRefreshPeriod = 5000L) : 
+        Scheduled(schedule),
+ 		_display(display),
+ 		_drawable(drawable),
+ 		_tick(period),
+ 		_full(fullRefreshPeriod),
+ 		_desired(' '),
+ 		_flushed(' '),
+ 		_hasFlushed(false) { }
     void begin() {
-        reset();
+ 		_tick.reset();
+ 		_full.reset();
         _display.begin();
         _display.backlight();
         _display.clear();
         _display.home();
         _display.noCursor();
+		_hasFlushed = false;
     }
     void poll() override {
-        if (expired()) {
-            reset();
-            _drawable.draw(_display);
-        }
+		if (_tick.expired()) {
+			_tick.reset();
+			bool forceFull = false;
+			if (_full.expired()) {
+				_full.reset();
+				forceFull = true;
+			}
+			render();
+			flush(forceFull);
+		}
     }
+ private:
+ 	void render() {
+ 		_desired.clear(' ');
+ 		_drawable.draw(_desired);
+ 	}
+ 	void flush(bool forceFull) {
+ 		if (forceFull || !_hasFlushed) {
+ 			_flushed.clear((char)0);
+ 		}
+ 		for (int row = 0; row < DisplayBuffer<TRows, TCols>::Rows; row++) {
+ 			int col = 0;
+ 			while (col < DisplayBuffer<TRows, TCols>::Cols) {
+ 				char desiredCh = _desired.get(row, col);
+ 				char flushedCh = _flushed.get(row, col);
+ 				bool changed = forceFull || !_hasFlushed || desiredCh != flushedCh;
+ 				if (!changed) {
+ 					col++;
+ 					continue;
+ 				}
+ 				int start = col;
+ 				char run[DisplayBuffer<TRows, TCols>::Cols + 1];
+ 				int runLen = 0;
+ 				while (col < DisplayBuffer<TRows, TCols>::Cols) {
+ 					desiredCh = _desired.get(row, col);
+ 					flushedCh = _flushed.get(row, col);
+ 					changed = forceFull || !_hasFlushed || desiredCh != flushedCh;
+ 					if (!changed) break;
+ 					run[runLen++] = desiredCh;
+ 					_flushed.set(row, col, desiredCh);
+ 					col++;
+ 				}
+ 				run[runLen] = 0;
+ 				_display.setCursor(start, row);
+ 				_display.print(run);
+ 			}
+ 		}
+ 		_hasFlushed = true;
+ 	}
 };
 
-template <class TDisplay>
-class DisplayLabel : public Drawable<TDisplay> {
+template <class TDisplay, int TRows = 4, int TCols = 20>
+class DisplayLabel : public DisplayDrawable<TDisplay, TRows, TCols> {
     int _row;
     int _col;
     const char *_text;
 public:
     DisplayLabel(int row, int col, const char *text) : _row(row), _col(col), _text(text) { }
-    void draw(TDisplay &lcd) {
-        lcd.setCursor(_col, _row);
-        lcd.print(_text);
+    void draw(DisplayBuffer<TRows, TCols> &buffer) {
+		buffer.write(_row, _col, _text);
     }
 };
 
-template <class TDisplay>
-class Spinner : public Drawable<TDisplay> {
+template <class TDisplay, int TRows = 4, int TCols = 20>
+class Spinner : public DisplayDrawable<TDisplay, TRows, TCols> {
   Enabled &_enabled;
   int _row;
   int _col;
@@ -73,39 +168,52 @@ class Spinner : public Drawable<TDisplay> {
   int _idx;
 public:
   Spinner(int row, int col, Enabled &enabled, const char *chars = "* "): _row(row), _col(col), _enabled(enabled), _idx(0), _chars(chars) {}
-  void draw(TDisplay &lcd) {
-    lcd.setCursor(_col, _row);
+  void draw(DisplayBuffer<TRows, TCols> &buffer) {
     if (_enabled.enabled()) {
-      lcd.print(_chars[_idx]);
-      _idx = (_idx + 1) % strlen(_chars);
+      buffer.set(_row, _col, _chars[_idx]);
+      _idx = (_idx + 1) % (int)strlen(_chars);
     } else {
-      lcd.print(" ");
+      buffer.set(_row, _col, ' ');
     }
   }
 };
 
-template <class TDisplay, class TValue>
-class DisplayValue : public Drawable<TDisplay> {
+template <class TDisplay, class TValue, int TRows = 4, int TCols = 20>
+class DisplayValue : public DisplayDrawable<TDisplay, TRows, TCols> {
   int _row;
   int _col;
   const char *_before;
   TValue &_value;
   const char *_after;
+  int _width;
 public:
   DisplayValue(int row, int col, const char *before, TValue &value, const char *after):
-    _row(row), _col(col), _before(before), _value(value), _after(after) {}
-  void draw(TDisplay &lcd) {
-    lcd.setCursor(_col, _row);
-    if (_before) lcd.print(_before);
-    lcd.print(_value);
-    if (_after) lcd.print(_after);
+    _row(row), _col(col), _before(before), _value(value), _after(after), _width(0) {}
+  DisplayValue(int row, int col, const char *before, TValue &value, const char *after, int width):
+    _row(row), _col(col), _before(before), _value(value), _after(after), _width(width) {}
+  void draw(DisplayBuffer<TRows, TCols> &buffer) {
+		char temp[32];
+		temp[0] = 0;
+		int offset = 0;
+		if (_before) {
+			buffer.write(_row, _col + offset, _before);
+			offset += (int)strlen(_before);
+		}
+		snprintf(temp, sizeof(temp), "%ld", (long)_value);
+		int valueWidth = _width;
+		if (valueWidth <= 0) valueWidth = (int)strlen(temp);
+		buffer.write(_row, _col + offset, temp, valueWidth);
+		offset += valueWidth;
+		if (_after) {
+			buffer.write(_row, _col + offset, _after);
+		}
   }
 };
 
 // You need to include <Arduino_JSON.h> for this to work.
 #ifdef _ARDUINO_JSON_H_
-template <class TDisplay>
-class SerialJsonBug : public Drawable<TDisplay>, private Scheduled {
+template <class TDisplay, int TRows = 4, int TCols = 20>
+class SerialJsonBug : public DisplayDrawable<TDisplay, TRows, TCols>, private Scheduled {
   JSONVar _json;
   Timer _timeout;
 public:
@@ -117,21 +225,20 @@ public:
       _timeout.reset();
     }
   }
-  void draw(TDisplay &lcd) {
+  void draw(DisplayBuffer<TRows, TCols> &buffer) {
     if (!_json["dirty"]) {
       if (_timeout.expired()) {
-        lcd.clear();
-        lcd.home();
-        lcd.print("No data");
+ 		buffer.clear(' ');
+ 		buffer.write(0, 0, "No data");
         _timeout.reset();
       }
       return; // reduce flickering
     }
     _json["dirty"] = false;
     _timeout.reset();
-    update(lcd);
+    update(buffer);
   }
-  virtual void update(TDisplay &lcd) = 0;
+  virtual void update(DisplayBuffer<TRows, TCols> &buffer) = 0;
 protected:
   JSONVar &json_data() { return _json; }
 };

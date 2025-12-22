@@ -50,9 +50,10 @@ public:
     const int count = length();
     for (int i = 0; i < count; i++) {
       if (item(i)->handle_key(ch)) {
-        return;
+        return true;
       }
     }
+    return false;
   }
 };
 
