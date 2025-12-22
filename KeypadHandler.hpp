@@ -46,6 +46,11 @@ public:
 class KeypadKeyHandlerComposite : public Composite<KeypadKeyHandler> {
 public:
   KeypadKeyHandlerComposite(KeypadKeyHandler *keyHandlerZ[]) : Composite<KeypadKeyHandler>(keyHandlerZ, countZ(keyHandlerZ)) { }
+#ifdef USE_VA_ARGS
+	template <class... Args>
+	KeypadKeyHandlerComposite(KeypadKeyHandler *first, Args... rest) :
+		Composite<KeypadKeyHandler>(first, rest...) { }
+#endif
   virtual bool handle_key(char ch) {
     const int count = length();
     for (int i = 0; i < count; i++) {

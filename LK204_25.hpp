@@ -95,13 +95,8 @@ public:
     void lineWrap(bool on) { send_command(on ? Command_LineWrap : Command_NoLineWrap); }
     void autoScroll(bool on) { send_command(on ? Command_AutoScroll : Command_NoAutoScroll); }
     void backspace() { send_command(Command_Backspace); }
-    void backlight(bool on = true) { 
-      if (on) {
-        send_command_2(Command_Backlight, 0);
-      } else {
-        send_command(Command_NoBacklight);
-      }
-    }
+    void backlight_on() { send_command_2(Command_Backlight, 0); }
+    void backlight_off() { send_command(Command_NoBacklight); }
     void setCursor(uint8_t col, uint8_t row) { send_command_3(Command_SetCursor, col+1, row+1); }
     void cursorUnderline(bool on) { send_command(on ? Command_CursorUnderline : Command_NoCursorUnderline); }
     void cursorBlock(bool on) { send_command(on ? Command_CursorBlock : Command_NoCursorBlock); }
@@ -125,9 +120,9 @@ public:
     void noBlink() { blink_off(); }
     void cursor() { cursor_on(); }
     void noCursor() { cursor_off(); }
-    void backlight() { backlight(true); }
+    void backlight() { backlight_on(); }
     bool getBacklight() { return true; }
-    void noBacklight() { backlight(false); }
+    void noBacklight() { backlight_off(); }
 
     virtual size_t write(uint8_t c) { send_byte(c); return 1; }
 

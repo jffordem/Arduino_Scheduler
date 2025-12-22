@@ -67,6 +67,24 @@ public:
 };
 
 template <class TDisplay, int TRows = 4, int TCols = 20>
+class DisplayDrawableComposite : public Composite<DisplayDrawable<TDisplay, TRows, TCols>> {
+public:
+  DisplayDrawableComposite(DisplayDrawable<TDisplay, TRows, TCols> *itemsZ[] = NULL) :
+    Composite<DisplayDrawable<TDisplay, TRows, TCols>>(itemsZ, countZ(itemsZ)) { }
+#ifdef USE_VA_ARGS
+	template <class... Args>
+	DisplayDrawableComposite(DisplayDrawable<TDisplay, TRows, TCols> *first, Args... rest) :
+		Composite<DisplayDrawable<TDisplay, TRows, TCols>>(first, rest...) { }
+#endif
+  void draw(DisplayBuffer<TRows, TCols> &buffer) {
+    const int count = length();
+		for (int i = 0; i < count; i++) {
+			item(i)->draw(buffer);
+		}
+	}
+};
+
+template <class TDisplay, int TRows = 4, int TCols = 20>
 class MainDisplay : private Scheduled {
     TDisplay &_display;
     DisplayDrawable<TDisplay, TRows, TCols> &_drawable;

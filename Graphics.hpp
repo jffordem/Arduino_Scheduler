@@ -66,6 +66,11 @@ class DrawableComposite : public Composite<Drawable<TDisplay>> {
 public:
   DrawableComposite(Drawable<TDisplay> *itemsZ[] = NULL) :
     Composite<Drawable<TDisplay>>(itemsZ, countZ(itemsZ)) { }
+#ifndef USE_VA_ARGS
+    template <class... Args>
+	PressComposite(Pressable *first, Args... rest) :
+		Composite<Pressable>(first, rest...) { }
+#endif
   void draw(TDisplay &display) {
     const int count = length();
 		for (int i = 0; i < count; i++) {
