@@ -22,29 +22,35 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef LEONARDOCONFIG_HPP
-#define LEONARDOCONFIG_HPP
+#ifndef BREADBOARDCONFIG_HPP
+#define BREADBOARDCONFIG_HPP
 
 #include <Led.hpp>
 #include <EncoderWheel.hpp>
 #include <ButtonHandler.hpp>
 
 /*
-Note: the PWM pins on the Leonardo are marked with a dash.
-They are near the reset button.
-Pins: 3, 5, 6, 9, 10, 11, 13.
+Note: the PWM pins on the Pro Micro are 3, 5, 6, 9, 10.
 */
 
 struct {
   const LedConfig DefaultLed = { .pin = LED_BUILTIN, .lowIsOn = false };
   struct {
-    const ButtonConfig Button = { .pin = 5, .lowIsPressed = true };
-    const EncoderConfig Encoder = { .clockPin = 7, .dataPin = 6 };
-  } B;
+    const ButtonConfig Button = { .pin = 4, .lowIsPressed = true };
+    const EncoderConfig Encoder = { .clockPin = 6, .dataPin = 5 };
+  } Left;
   struct {
-    const ButtonConfig Button = { .pin = 8, .lowIsPressed = true };
-    const EncoderConfig Encoder = { .clockPin = 10, .dataPin = 9 };
-  } A;
+    const ButtonConfig Button = { .pin = 4, .lowIsPressed = true };
+    const EncoderConfig Encoder = { .clockPin = 6, .dataPin = 5 };
+  } A; // Copy of Left
+  struct {
+    const ButtonConfig Button = { .pin = 7, .lowIsPressed = true };
+    const EncoderConfig Encoder = { .clockPin = 9, .dataPin = 8 };
+  } Right;
+  struct {
+    const ButtonConfig Button = { .pin = 7, .lowIsPressed = true };
+    const EncoderConfig Encoder = { .clockPin = 9, .dataPin = 8 };
+  } B; // Copy of Right
 } Config;
 
 #endif

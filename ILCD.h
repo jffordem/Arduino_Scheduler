@@ -1,3 +1,6 @@
+#ifndef _ILCD_h
+#define _ILCD_h
+
 /*
 MIT License
 
@@ -22,29 +25,38 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef LEONARDOCONFIG_HPP
-#define LEONARDOCONFIG_HPP
+/* LCD Interface provides a common base for various LCD displays.
+ * An LCD display should implement Print, and basic commands such as clear, home, etc.
+ */
 
-#include <Led.hpp>
-#include <EncoderWheel.hpp>
-#include <ButtonHandler.hpp>
+class ILCD : public Print {
+public:
+    virtual void begin() = 0;
+    virtual void clear() = 0;
+    virtual void home() = 0;
+    virtual void noDisplay() = 0;
+    virtual void display() = 0;
+    virtual void noBlink() = 0;
+    virtual void blink() = 0;
+    virtual void noCursor() = 0;
+    virtual void cursor() = 0;
+    virtual void scrollDisplayLeft() = 0;
+    virtual void scrollDisplayRight() = 0;
+    virtual void leftToRight() = 0;
+    virtual void rightToLeft() = 0;
+    virtual void noBacklight() = 0;
+    virtual void backlight() = 0;
+    virtual bool getBacklight() = 0;
+    virtual void autoscroll() = 0;
+    virtual void noAutoscroll() = 0;
+	virtual void setCursor(uint8_t, uint8_t);
+};
 
-/*
-Note: the PWM pins on the Leonardo are marked with a dash.
-They are near the reset button.
-Pins: 3, 5, 6, 9, 10, 11, 13.
-*/
+class IKeypad {
+public:
+    virtual void begin() = 0;
+    virtual uint8_t read() = 0;
+    virtual void clear() = 0;
+};
 
-struct {
-  const LedConfig DefaultLed = { .pin = LED_BUILTIN, .lowIsOn = false };
-  struct {
-    const ButtonConfig Button = { .pin = 5, .lowIsPressed = true };
-    const EncoderConfig Encoder = { .clockPin = 7, .dataPin = 6 };
-  } B;
-  struct {
-    const ButtonConfig Button = { .pin = 8, .lowIsPressed = true };
-    const EncoderConfig Encoder = { .clockPin = 10, .dataPin = 9 };
-  } A;
-} Config;
-
-#endif
+#endif // _ILCD_h

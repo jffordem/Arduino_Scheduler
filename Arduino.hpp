@@ -22,16 +22,33 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#if DEBUG == 1
+#define DEBUG_INIT() Serial.begin(115200)
+#define DEBUG_PRINT(x) Serial.print(x)
+#define DEBUG_PRINT2(x, d) Serial.print(x, d)
+#define DEBUG_PRINTLN(x) Serial.println(x)
+#define DEBUG_PRINTLN2(x, d) Serial.println(x, d)
+#else
+#define DEBUG_INIT()
+#define DEBUG_PRINT(x)
+#define DEBUG_PRINT2(x, d)
+#define DEBUG_PRINTLN(x)
+#define DEBUG_PRINTLN2(x, d)
+#endif
+
+
 // Want to define these so that I don't get a bunch of lint issues
 // in the editor.  Taking advantage of the fact that arduino defines
 // max as a macro.
+#ifdef COMMENTEDOUT
+
 #ifndef max
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define constrain(x, a, b) (max((a), min((x), (b))))
 #define random(a, b) (0)
 void delay(long ms) { }
-long millis() { return 0; }
+long int millis() { return 0; }
 void tone(uint8_t,uint16_t) { }
 void noTone(uint8_t) { }
 #define INPUT_PULLUP 1
@@ -41,8 +58,12 @@ void noTone(uint8_t) { }
 #define LOW 0
 #define NULL 0
 #define LED_BUILTIN 1
+#define RISING 1
+#define FALLING 1
 void pinMode(int i, int j) { }
 bool digitalRead(int i) { return LOW; }
+int digitalPinToInterrupt(int i) { return 0; }
+void attachInterrupt(int i, void (*j)(), int k) { }
 void digitalWrite(int i, bool j) { }
 int analogRead(int i) { return 0; }
 void analogWrite(int i, int j) { }
@@ -132,3 +153,5 @@ public:
 };
 uint16_t SSD1306_WHITE = 0;
 #endif
+
+#endif // COMMENTEDOUT

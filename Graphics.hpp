@@ -28,7 +28,6 @@ SOFTWARE.
 #include <Clock.hpp>
 #include <EdgeDetector.hpp>
 
-/*
 template <class T>
 struct Pos {
   Pos(T xval = 0, T yval = 0) : x(xval), y(yval) { }
@@ -54,35 +53,39 @@ struct Rect : public Pos<T>, public Size<T> {
   T right() const { return this->x + this->width; }
   T bottom() const { return this->y + this->height; }
 };
-*/
 
+// Adafruit_GFX
+template <class TDisplay>
 class Drawable {
 public:
-  virtual void draw(Adafruit_GFX &display) = 0;
+  virtual void draw(TDisplay &display) = 0;
 };
 
-class DrawableComposite : public Composite<Drawable> {
+template <class TDisplay>
+class DrawableComposite : public Composite<Drawable<TDisplay>> {
 public:
-  DrawableComposite(Drawable *itemsZ[] = NULL) :
-    Composite<Drawable>(itemsZ, countZ(itemsZ)) { }
-  void draw(Adafruit_GFX &display) {
-		for (int i = 0; i < length(); i++) {
+  DrawableComposite(Drawable<TDisplay> *itemsZ[] = NULL) :
+    Composite<Drawable<TDisplay>>(itemsZ, countZ(itemsZ)) { }
+  void draw(TDisplay &display) {
+    const int count = length();
+		for (int i = 0; i < count; i++) {
 			item(i)->draw(display);
 		}
 	}
 };
 
+template <class TDisplay>
 class MainWindow : public Clock, private EdgeDetectorBase {
-  Adafruit_SSD1306 &_display;
+  TDisplay &_display; // Adafruit_SSD1306
   long _clockHigh = 25;
   long _clockLow = 25;
   bool _clockValue;
-  List<Drawable*> _items;
+  List<Drawable<TDisplay>*> _items;
 public:
-  MainWindow(Schedule &schedule, Adafruit_SSD1306 &display) :
+  MainWindow(Schedule &schedule, TDisplay &display) :
     Clock(schedule, _clockLow, _clockHigh, _clockValue),
     EdgeDetectorBase(schedule, _clockValue), _display(display) { }
-  void add(Drawable *item) { _items.add(item); }
+  void add(Drawable<TDisplay> *item) { _items.add(item); }
   void update() {
     _display.clearDisplay();
 		for (int i = 0; i < _items.length(); i++) {
@@ -91,7 +94,9 @@ public:
     _display.display();
   }
   void onRisingEdge() { update(); }
-  void onFallingEdge() { /* Serial.println("MAINWINDOW FALLING EDGE"); */ }
+  void onFallingEdge() {
+    // Serial.println("MAINWINDOW FALLING EDGE");
+  }
 };
 
 /*
@@ -106,16 +111,19 @@ public:
 };
 */
 
-class VirtualLED : public Drawable {
+// Adafruit_GFX
+/*
+template <class TDisplay>
+class VirtualLED : public Drawable<TDisplay> {
   int16_t &_x;
   int16_t &_y;
   const int16_t &_radius;
   const uint16_t _color;
   bool &_ledState;
 public:
-  VirtualLED(MainWindow &window, bool &ledState, int16_t &x, int16_t &y, int16_t &radius, uint16_t color = SSD1306_WHITE) :
+  VirtualLED(MainWindow<TDisplay> &window, bool &ledState, int16_t &x, int16_t &y, int16_t &radius, uint16_t color = SSD1306_WHITE) :
     _ledState(ledState), _x(x), _y(y), _radius(radius), _color(color) { window.add(this); }
-  void draw(Adafruit_GFX &display) {
+  void draw(TDisplay &display) {
     if (_ledState) {
       display.fillCircle(_x, _y, _radius, _color);
     } else {
@@ -124,7 +132,6 @@ public:
   }
 };
 
-/*
 class Label : public Drawable {
   Pos &_pos;
   String _text;
@@ -219,4 +226,4 @@ public:
 };
 */
 
-#endif
+#endif // GRAPHICS_HPP

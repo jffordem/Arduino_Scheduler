@@ -69,6 +69,7 @@ class Enabled {
 public:
 	virtual void enable(bool value) = 0;
 	virtual void toggle() = 0;
+	virtual bool enabled() const = 0;
 };
 
 template <class T>
@@ -106,6 +107,14 @@ public:
 		for (int i = 0; i < length(); i++) {
 			item(i)->toggle();
 		}
+	}
+	bool enabled() const {
+		for (int i = 0; i < length(); i++) {
+			if (item(i)->enabled()) {
+				return true;
+			}
+		}
+		return false;
 	}
 };
 
@@ -146,6 +155,7 @@ public:
 	PollGroup(Schedule &schedule) : Scheduled(schedule) { }
 	void enable(bool value) { _enabled = value; }
 	void toggle() { enable(!_enabled); }
+	bool enabled() const { return _enabled; }
 	void poll() {
 		if (_enabled) {
 			PollerComposite::poll();

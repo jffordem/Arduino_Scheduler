@@ -58,32 +58,55 @@ struct EncoderConfig {
 	EncoderConfig(int clkPinValue, int dtPinValue) : clockPin(clkPinValue), dataPin(dtPinValue) { }
 };
 
-class EncoderWheel : public EdgeDetectorBase {
+class EncoderWheelHandler : public EdgeDetectorBase {
 	DigitalRead _clk;
 	DigitalRead _data;
 	bool _clkValue;
 	bool _dtValue;
-	int &_value;
-	int _limit;
 public:
-	EncoderWheel(Schedule &schedule, const EncoderConfig &config, int &value, int limit = (MAX_INT - 10)) :
-		EncoderWheel(schedule, config.clockPin, config.dataPin, value) { }
-	EncoderWheel(Schedule &schedule, int clockPin, int dataPin, int &value, int limit = (MAX_INT - 10)) : 
+	static const uint8_t ENCODER_NONE = 0;
+	static const uint8_t ENCODER_WHEEL_LEFT = 1;
+	static const uint8_t ENCODER_WHEEL_RIGHT = 2;
+
+	virtual void handleInput(uint8_t input) = 0;
+
+	EncoderWheelHandler(Schedule &schedule, const EncoderConfig &config) :
+		EncoderWheelHandler(schedule, config.clockPin, config.dataPin) { }
+	EncoderWheelHandler(Schedule &schedule, int clockPin, int dataPin) : 
 		EdgeDetectorBase(schedule, _clkValue),
 		_clk(schedule, clockPin, _clkValue, INPUT_PULLUP), 
-		_data(schedule, dataPin, _dtValue, INPUT_PULLUP),
-		_value(value), _limit(limit) { }
+		_data(schedule, dataPin, _dtValue, INPUT_PULLUP) { }
 	void onRisingEdge() {
 		if (_dtValue != _clkValue) {
-			_value = constrain(_value + 1, -_limit, +_limit);
+			handleInput(ENCODER_WHEEL_RIGHT);
 		} else {
-			_value = constrain(_value - 1, -_limit, +_limit);
+			handleInput(ENCODER_WHEEL_LEFT);
 		}
 	}
 	void onFallingEdge() { }
 	void plot(PlotComposite &plot, String name) {
 		PlotBool::addToPlot(plot, name + ".clock", _clkValue);
 		PlotBool::addToPlot(plot, name + ".data", _dtValue);
+	}
+};
+
+class EncoderWheel : public EncoderWheelHandler {
+	int &_value;
+	int _limit;
+public:
+	EncoderWheel(Schedule &schedule, const EncoderConfig &config, int &value, int limit = (MAX_INT - 10)) :
+		EncoderWheel(schedule, config.clockPin, config.dataPin, value, limit) { }
+	EncoderWheel(Schedule &schedule, int clockPin, int dataPin, int &value, int limit = (MAX_INT - 10)) : 
+		EncoderWheelHandler(schedule, clockPin, dataPin), _value(value), _limit(limit) { }
+	void handleInput(uint8_t input) {
+		if (input == ENCODER_WHEEL_LEFT) {
+			_value = constrain(_value - 1, 0, _limit);
+		} else if (input == ENCODER_WHEEL_RIGHT) {
+			_value = constrain(_value + 1, 0, _limit);
+		}
+	}
+	void plot(PlotComposite &plot, String name) {
+		PlotNum<int>::addToPlot(plot, name + ".value", _value);
 	}
 };
 
@@ -96,6 +119,35 @@ public:
 	EncoderControl(Schedule &schedule, int clockPin, int dataPin, T &value, int sensitivity, T maxVal) :
     	EncoderWheel(schedule, clockPin, dataPin, _encoderValue, abs(sensitivity)),
     	Mapper<int, T>(schedule, _encoderValue, value, -sensitivity, sensitivity, 0, maxVal) { }
+	void plot(PlotComposite &plot, String name) {
+		EncoderWheel::plot(plot, name);
+		// PlotNum<int>::addToPlot(plot, name, ".value", _encoderValue);
+	}
+};
+
+template <class T>
+class EncoderSelector : private EncoderWheel, private Chooser<int, T> {
+	int _encoderValue = 0;
+public:
+	EncoderSelector(Schedule &schedule, const EncoderConfig &config, T &value, T optionsZ[]) :
+		EncoderSelector(schedule, config.clockPin, config.dataPin, value, optionsZ) { }
+	EncoderSelector(Schedule &schedule, int clockPin, int dataPin, T &value, T optionsZ[]) :
+		EncoderWheel(schedule, clockPin, dataPin, _encoderValue),
+		Chooser<int, T>(schedule, _encoderValue, value, optionsZ),
+		_encoderValue(findIndex(value, optionsZ)) { }
+	void plot(PlotComposite &plot, String name) {
+		EncoderWheel::plot(plot, name);
+		// PlotNum<int>::addToPlot(plot, name, ".selection", _encoderValue);
+	}
+private:
+	static int findIndex(T value, T optionsZ[]) {
+		for (int i = 0; optionsZ[i]; i++) {
+			if (optionsZ[i] == value) {
+				return i;
+			}
+		}
+		return 0;
+	}
 };
 
 #endif

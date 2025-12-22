@@ -28,6 +28,7 @@ SOFTWARE.
 template <class T>
 class Enumerable {
 public:
+    virtual void reset() = 0;
     virtual T current() const = 0;
     virtual void next() = 0;
     virtual bool done() const = 0;
@@ -135,7 +136,29 @@ int countZ(const T *itemsZ) {
     return count;
 }
 
-#else
+template <class T>
+class ListEnumerator : public Enumerable<T> {
+    ListPair<T> *_list;
+    ListPair<T> *_current;
+public:
+    ListEnumerator(List<T> &list) : _list(list.head()) {
+        reset();
+    }
+    void reset() {
+        _current = _list;
+    }
+    T current() const {
+        return _current->car();
+    }
+    void next() {
+        _current = _current->cdr();
+    }
+    bool done() const {
+        return _current == NULL;
+    }
+};
+
+#else // USE_LINKED_LIST
 
 #define MAX_LIST_SIZE 30
 
@@ -152,7 +175,9 @@ public:
     T item(int index) const { return _data[index]; }
 };
 
-#endif
+#endif // USE_LINKED_LIST
+
+#ifdef COMMENTED_OUT
 
 // Just needed to test out the list thingy.
 int sum(List<int> &numbers) {
@@ -163,4 +188,76 @@ int sum(List<int> &numbers) {
     return result;
 }
 
-#endif
+template <class T, class U>
+IList<U> *map(IList<T> *list, U (*mapper)(T)) {
+    List<U> *result = new List<U>();
+    if (list) {
+        for (int i = 0; i < list->length(); i++) {
+            T item = list->item(i);
+            result->add(mapper(item));
+        }
+    }
+    return result;
+}
+
+template <class T>
+IList<T> *filter(IList<T> *list, bool (*predicate)(T)) {
+    List<T> *result = new List<T>();
+    if (list) {
+        for (int i = 0; i < list->length(); i++) {
+            T item = list->item(i);
+            if (predicate(item)) {
+                result->add(item);
+            }
+        }
+    }
+    return result;
+}
+
+template <class T, class U>
+IList<U> *flatMap(IList<T> *list, IList<U> *(*mapper)(T)) {
+    List<U> *result = new List<U>();
+    if (list) {
+        for (int i = 0; i < list->length(); i++) {
+            T item = list->item(i);
+            IList<U> *mapped = mapper(item);
+            if (mapped) {
+                for (int j = 0; j < mapped->length(); j++) {
+                    result->add(mapped->item(j));
+                }
+            }
+        }
+    }
+    return result;
+}
+
+template <class T>
+T reduce(IList<T> *list, T (*reducer)(T, T), T initial) {
+    T result = initial;
+    if (list) {
+        for (int i = 0; i < list->length(); i++) {
+            T item = list->item(i);
+            result = reducer(result, item);
+        }
+    }
+    return result;
+}
+
+int sum2(List<int> &numbers) {
+    int result = 0;
+    ListEnumerator<int> enumerator(numbers);
+    for (enumerator.reset(); !enumerator.done(); enumerator.next()) {
+        result += enumerator.current();
+    }
+    return result;
+}
+
+int add(int a, int b) { return a + b; }
+
+int sum3(List<int> &numbers) {
+    return reduce(&numbers, add, 0);
+}
+
+#endif // COMMENTED_OUT
+
+#endif // LINKEDLIST_HPP

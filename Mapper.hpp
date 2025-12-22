@@ -49,6 +49,27 @@ public:
 	}
 };
 
+template <class Tin, class Tout>
+class Chooser : public Scheduled {
+	Tin &_inValue;
+	Tout &_outValue;
+	Tout *_optionsZ;
+	long _optionsCount;
+public:
+	Chooser(Schedule &schedule, Tin &inValue, Tout &outValue, Tout *optionsZ) : 
+		Scheduled(schedule), _inValue(inValue), _outValue(outValue), _optionsZ(optionsZ) { _optionsCount = countZ(optionsZ); }
+	void poll() {
+		long index = (long) _inValue;
+		while (index < 0) index += _optionsCount;
+		while (index >= _optionsCount) index -= _optionsCount;
+		if (index < 0 || index >= _optionsCount) {
+			_outValue = _optionsZ[0];
+		} else {
+			_outValue = _optionsZ[index];
+		}
+	}
+};
+
 class Inverter : public Scheduled {
 	bool &_input;
 	bool &_output;

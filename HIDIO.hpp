@@ -88,22 +88,33 @@ public:
  * Pressable for a keyboard key, like quicksave (KEY_F5).
 */
 class KeyPress : public Pressable {
-	const int _key;
+	int _key;
 public:
 	KeyPress(int key) : _key(key) { }
 	void press() { Keyboard.press(_key); }
 	void release() { Keyboard.release(_key); }
+	void assign(int key) { Keyboard.release(_key); _key = key; }
+};
+
+class KeyPressDynamic : public Pressable {
+	char &_key;
+	char _pressed;
+public:
+	KeyPressDynamic(char &key) : _key(key), _pressed(0) { }
+	void press() { Keyboard.press(_key); _pressed = _key; }
+	void release() { if (_pressed) Keyboard.release(_pressed); _pressed = 0; }
 };
 
 /**
  * Pressable for a mouse button like MOUSE_LEFT or MOUSE_RIGHT.
 */
 class MouseButton : public Pressable {
-	const int _button;
+	int _button;
 public:
 	MouseButton(int button) : _button(button) { }
 	void press() { Mouse.press(_button); }
 	void release() { Mouse.release(_button); }
+	void assign(int button) { Mouse.release(_button); _button = button; }
 };
 
 /**

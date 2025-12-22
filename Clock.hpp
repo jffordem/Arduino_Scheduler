@@ -61,6 +61,9 @@ public:
 	bool expired() const {
 		return millis() - _lastExpired > _time;
 	}
+	void reset() {
+		reset(_time);
+	}
 	void reset(long time) {
 		_time = constrain(time, 0, MAX_LONG);
 		_lastExpired = millis();
@@ -98,6 +101,7 @@ public:
 	}
 	void enable(bool value) { _enabled = value; }
 	void toggle() { enable(!_enabled); }
+	bool enabled() const { return _enabled; }
 	virtual void handleExpired() = 0;
 };
 
@@ -118,6 +122,9 @@ public:
 	}
 	void toggle() {
 		enable(!_enabled);
+	}
+	bool enabled() const {
+		return _enabled;
 	}
 	void poll() {
 		if (expired() && _enabled) {

@@ -40,9 +40,17 @@ struct {
     const EncoderConfig Encoder = { .clockPin = 6, .dataPin = 5 };
   } Left;
   struct {
+    const ButtonConfig Button = { .pin = 4, .lowIsPressed = true };
+    const EncoderConfig Encoder = { .clockPin = 6, .dataPin = 5 };
+  } A; // Copy of Left
+  struct {
     const ButtonConfig Button = { .pin = 7, .lowIsPressed = true };
     const EncoderConfig Encoder = { .clockPin = 9, .dataPin = 8 };
   } Right;
+  struct {
+    const ButtonConfig Button = { .pin = 7, .lowIsPressed = true };
+    const EncoderConfig Encoder = { .clockPin = 9, .dataPin = 8 };
+  } B; // Copy of Right
 } Config;
 
 #endif
