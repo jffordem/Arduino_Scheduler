@@ -36,13 +36,13 @@ public:
 MainSchedule schedule;
 
 Blinky blinky(schedule, offTime, onTime, Config.DefaultLed);
-EncoderControl offControl(schedule, Config.Left.Encoder, offTime, -15, offTime*2);
-EncoderControl onControl(schedule, Config.Right.Encoder, onTime, -15, onTime*2);
+EncoderControl<long> offControl(schedule, Config.Left.Encoder, offTime, -15, offTime*2);
+EncoderControl<long> onControl(schedule, Config.Right.Encoder, onTime, -15, onTime*2);
 ToggleButton encoderButton(schedule, Config.Left.Button, blinky);
 
 void setup() {
-  //schedule.begin();
-  //blinky.enable(true);
+  schedule.begin();
+  blinky.enable(true);
 }
 
 void loop() {

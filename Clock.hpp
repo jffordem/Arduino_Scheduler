@@ -71,7 +71,7 @@ public:
 };
 
 class ExpiresComposite : public Composite<Expires> {
-	const bool _any; // true for any(expired), false for all(expired
+	const bool _any; // true for any(expired), false for all(expired)
 public:
 	ExpiresComposite(bool any = true, Expires *itemsZ[] = NULL) :
 		Composite<Expires>(itemsZ, countZ(itemsZ)), _any(any) { }

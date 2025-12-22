@@ -43,16 +43,14 @@ DummyButton saveKey("SAVE", true);
 #endif
 
 PressFollower rightDelayButton(schedule, 150, rightMouseButton);
-Pressable *buttons[] = { &leftMouseButton, &rightDelayButton, 0 };
-PressComposite mouseButtons(buttons);
+PressComposite mouseButtons(&leftMouseButton, &rightDelayButton);
 
 ButtonController buttonController(schedule, upTime, downTime, mouseButtons);
 ButtonController saveController(schedule, saveTime, keyPressDelay, saveKey);
-Enabled *controls[] = { &buttonController, &saveController, 0 };
-EnableComposite controller(controls);
+EnableComposite controller(&buttonController, &saveController);
 
-EncoderControl castRate(schedule, Config.Left.Encoder, upTime, -20, upTime*2);
-EncoderControl castTime(schedule, Config.Right.Encoder, downTime, -20, downTime*2);
+EncoderControl<long> castRate(schedule, Config.Left.Encoder, upTime, -20, upTime*2);
+EncoderControl<long> castTime(schedule, Config.Right.Encoder, downTime, -20, downTime*2);
 
 ToggleButton leftButton(schedule, Config.Left.Button, controller);
 

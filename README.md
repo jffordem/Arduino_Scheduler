@@ -22,17 +22,28 @@ to be polled.  This reduces the risk that you'd forget to add it, because it isn
 polled and which work independently.
 
 ## Modules
+Arduino.hpp
+* Arduino core shim for editor/lint friendliness
+
+LinkedList.hpp
+* Enumerable
+* IList
+* Pair
+* ListPair
+* List
+* countZ
+
 Scheduler.hpp
 * Pressable
 * Poller
 * Enabled
 * Composite
 * PressComposite
-* EnabledComposite
+* EnableComposite
 * PollerComposite
+* PollGroup
 * MainSchedule
 * Scheduled
-* PollGroup
 
 Clock.hpp : Scheduler.hpp
 * Timer
@@ -47,8 +58,12 @@ PinIO.hpp : Scheduler.hpp
 
 EdgeDetector.hpp : Scheduler.hpp
 * EdgeDetectorBase
-* EdgeDecector
+* Trigger
+* TriggerFunction
+* EdgeDetector
+* PeriodicTrigger
 * Counter
+* FrequencyDivider
 
 HIDIO.hpp : Scheduler.hpp, Clock.hpp
 * ValuePresser
@@ -57,24 +72,54 @@ HIDIO.hpp : Scheduler.hpp, Clock.hpp
 * MouseButton
 * DummyButton
 * ButtonController
+* PressFollower
 
 Mapper.hpp : Scheduler.hpp
 * Mapper
 * Inverter
+* AndInputs
+* OrInputs
 * Constrain
 
+SerialPlot.hpp : Scheduler.hpp, EdgeDetector.hpp
+* Channels
+* Plotted
+* PlotComposite
+* PlotBool
+* PlotNum
+* SerialPlot
+
 Led.hpp : Scheduler.hpp, PinIO.hpp, Mapper.hpp
+* LedConfig
 * DigitalLED
 * SevenSegLED
 * Pot
 
-ButtonHandler.hpp : Scheduler.hpp, EdgeDetector.hpp, HIDIO.hpp
+ButtonHandler.hpp : Scheduler.hpp, EdgeDetector.hpp, PinIO.hpp, Mapper.hpp
+* ButtonConfig
+* ButtonValue
 * ButtonHandler
 * Button
 * ToggleButton
+* ActiveBuzzer
+* PassiveBuzzer
 
-EncoderWheel.hpp : Scheduler.hpp, PinIO.hpp, EdgeDetector.hpp
+EncoderWheel.hpp : Scheduler.hpp, PinIO.hpp, EdgeDetector.hpp, Mapper.hpp, SerialPlot.hpp
+* EncoderConfig
 * EncoderWheel
+* EncoderControl
+
+Graphics.hpp : Clock.hpp, EdgeDetector.hpp
+* Drawable
+* DrawableComposite
+* MainWindow
+* VirtualLED
+
+BreadboardConfig.hpp : Led.hpp, EncoderWheel.hpp, ButtonHandler.hpp
+* Config
+
+LeonardoConfig.hpp : Led.hpp, EncoderWheel.hpp, ButtonHandler.hpp
+* Config
 
 ## Examples
 Composition with objects - including inheritance - can be seen in things like the ButtonHandler and 

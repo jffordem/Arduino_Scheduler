@@ -76,12 +76,21 @@ template <class T>
 class Composite : public List<T*>, public T {
 public:
 	Composite(T *items[] = NULL, int count = 0) : List<T*>(items, count) { }
+	template <class... Args>
+	Composite(T *first, Args... rest) : List<T*>(NULL, 0) {
+		this->add(first);
+		int _dummy[] = { 0, (this->add(rest), 0)... };
+		(void)_dummy;
+	}
 };
 
 class PressComposite : public Composite<Pressable> {
 public:
 	PressComposite(Pressable *itemsZ[] = NULL) :
 		Composite<Pressable>(itemsZ, countZ(itemsZ)) { }
+	template <class... Args>
+	PressComposite(Pressable *first, Args... rest) :
+		Composite<Pressable>(first, rest...) { }
 	void press() {
 		for (int i = 0; i < length(); i++) {
 			item(i)->press();
@@ -98,6 +107,9 @@ class EnableComposite : public Composite<Enabled> {
 public:
 	EnableComposite(Enabled *itemsZ[] = NULL) :
 		Composite<Enabled>(itemsZ, countZ(itemsZ)) { }
+	template <class... Args>
+	EnableComposite(Enabled *first, Args... rest) :
+		Composite<Enabled>(first, rest...) { }
 	void enable(bool value) {
 		for (int i = 0; i < length(); i++) {
 			item(i)->enable(value);
@@ -122,6 +134,9 @@ class PollerComposite : public Composite<Poller> {
 public:
 	PollerComposite(Poller *itemsZ[] = NULL) :
 		Composite<Poller>(itemsZ, countZ(itemsZ)) { }
+	template <class... Args>
+	PollerComposite(Poller *first, Args... rest) :
+		Composite<Poller>(first, rest...) { }
 	void poll() {
 		for (int i = 0; i < length(); i++) {
 			item(i)->poll();
