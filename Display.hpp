@@ -51,10 +51,10 @@ public:
 	}
 	void write(int row, int col, const char *text, int width = -1) {
 		if (!text) text = "";
-		if (width < 0) width = (int)strlen(text);
+		int len = (int)strlen(text);
+		if (width < 0) width = len;
 		for (int i = 0; i < width; i++) {
-			char ch = text[i];
-			if (ch == 0) ch = ' ';
+			char ch = i < len ? text[i] : ' ';
 			set(row, col + i, ch);
 		}
 	}
