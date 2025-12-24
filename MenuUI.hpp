@@ -6,6 +6,7 @@
 #include <KeypadHandler.hpp>
 #include <string.h>
 #include <stdio.h>
+#include <limits.h>
 
 // A small retained-mode menu system designed for character LCDs.
 // It renders into DisplayBuffer and is intended to be used with MainDisplay.
@@ -14,7 +15,8 @@ enum MenuItemKind {
 	MenuItem_Action,
 	MenuItem_Submenu,
 	MenuItem_ToggleEnabled,
-	MenuItem_EditLong
+	MenuItem_EditLong,
+	MenuItem_EnterLong
 };
 
 class MenuContext;
@@ -62,6 +64,15 @@ struct MenuItem {
 		i.step = stepValue;
 		return i;
 	}
+	static MenuItem EnterLong(const char *labelValue, long &value) {
+		MenuItem i;
+		i.label = labelValue;
+		i.kind = MenuItem_EnterLong;
+		i.action = 0;
+		i.target = &value;
+		i.step = 1;
+		return i;
+	}
 };
 
 class MenuScreen {
@@ -87,8 +98,12 @@ class MenuContext {
 	long *_editValue;
 	long _editStep;
 	const char *_editLabel;
+	MenuItemKind _editKind;
+	long _editOriginal;
+	long _enterValue;
+	bool _enterStarted;
 public:
-	MenuContext(const MenuScreen &root) : _depth(0), _selected(0), _top(0), _editing(false), _editValue(0), _editStep(1), _editLabel(0) {
+	MenuContext(const MenuScreen &root) : _depth(0), _selected(0), _top(0), _editing(false), _editValue(0), _editStep(1), _editLabel(0), _editKind(MenuItem_Action), _editOriginal(0), _enterValue(0), _enterStarted(false) {
 		_stack[0] = &root;
 	}
 
@@ -107,9 +122,14 @@ public:
 	}
 	void pop() {
 		if (_editing) {
+			if (_editKind == MenuItem_EnterLong && _editValue) {
+				*_editValue = _editOriginal;
+			}
 			_editing = false;
 			_editValue = 0;
 			_editLabel = 0;
+			_editKind = MenuItem_Action;
+			_enterStarted = false;
 			return;
 		}
 		if (_depth > 0) {
@@ -121,7 +141,7 @@ public:
 
 	void move(int delta) {
 		if (_editing) {
-			if (_editValue) {
+			if (_editKind == MenuItem_EditLong && _editValue) {
 				*_editValue += (long)delta * _editStep;
 			}
 			return;
@@ -141,9 +161,14 @@ public:
 	void activate() {
 		if (_editing) {
 			// Select confirms value and exits edit mode
+			if (_editKind == MenuItem_EnterLong && _editValue) {
+				*_editValue = _enterValue;
+			}
 			_editing = false;
 			_editValue = 0;
 			_editLabel = 0;
+			_editKind = MenuItem_Action;
+			_enterStarted = false;
 			return;
 		}
 		const MenuItem &it = screen().item(_selected);
@@ -162,6 +187,19 @@ public:
 				_editValue = (long*)it.target;
 				_editStep = it.step;
 				_editLabel = it.label;
+				_editKind = MenuItem_EditLong;
+				_editOriginal = _editValue ? *_editValue : 0;
+				break;
+			case MenuItem_EnterLong:
+				_editing = true;
+				_editValue = (long*)it.target;
+				_editStep = 1;
+				_editLabel = it.label;
+				_editKind = MenuItem_EnterLong;
+				_editOriginal = _editValue ? *_editValue : 0;
+				if (_editOriginal < 0) _editOriginal = 0;
+				_enterValue = _editOriginal;
+				_enterStarted = false;
 				break;
 		}
 	}
@@ -177,7 +215,50 @@ public:
 	}
 
 	const char *editLabel() const { return _editLabel; }
-	long editValue() const { return _editValue ? *_editValue : 0; }
+	long editValue() const { return _editKind == MenuItem_EnterLong ? _enterValue : (_editValue ? *_editValue : 0); }
+	MenuItemKind editKind() const { return _editKind; }
+	bool handleEditKey(char ch) {
+		if (!_editing) return false;
+		if (_editKind == MenuItem_EnterLong) {
+			if (ch == KeypadKey_Pound || ch == KeypadKey_Hash || ch == KeypadKey_Octothorpe) {
+				activate();
+				return true;
+			}
+			if (ch == KeypadKey_Asterisk) {
+				if (!_enterStarted) {
+					_enterValue = _editOriginal;
+					_enterStarted = true;
+				}
+				_enterValue = _enterValue / 10;
+				return true;
+			}
+			int digit = -1;
+			if (ch == KeypadKey_0) digit = 0;
+			else if (ch == KeypadKey_1) digit = 1;
+			else if (ch == KeypadKey_2) digit = 2;
+			else if (ch == KeypadKey_3) digit = 3;
+			else if (ch == KeypadKey_4) digit = 4;
+			else if (ch == KeypadKey_5) digit = 5;
+			else if (ch == KeypadKey_6) digit = 6;
+			else if (ch == KeypadKey_7) digit = 7;
+			else if (ch == KeypadKey_8) digit = 8;
+			else if (ch == KeypadKey_9) digit = 9;
+			if (digit >= 0) {
+				if (!_enterStarted) {
+					_enterValue = 0;
+					_enterStarted = true;
+				}
+				if (_enterValue <= (LONG_MAX - digit) / 10) {
+					_enterValue = _enterValue * 10 + digit;
+				} else {
+					_enterValue = LONG_MAX;
+				}
+				return true;
+			}
+			return false;
+		}
+		return false;
+	}
 };
 
 struct MenuKeymap {
@@ -199,6 +280,7 @@ public:
 	MenuKeypadController(MenuContext &ctx, const MenuKeymap &keys) : _ctx(ctx), _keys(keys) { }
 	bool handle_key(char ch) {
 		if (!ch) return false;
+		if (_ctx.handleEditKey(ch)) return true;
 		if (ch == _keys.up) { _ctx.move(-1); return true; }
 		if (ch == _keys.down) { _ctx.move(+1); return true; }
 		if (ch == _keys.back) { _ctx.pop(); return true; }
@@ -230,6 +312,13 @@ public:
 		if (_ctx.editing()) {
 			char line[TCols + 1];
 			line[0] = 0;
+			if (_ctx.editKind() == MenuItem_EnterLong) {
+				snprintf(line, sizeof(line), "Enter:%ld", _ctx.editValue());
+				buffer.write(1, 0, line, TCols);
+				buffer.write(2, 0, "0-9 type *=Del", TCols);
+				buffer.write(3, 0, "#=OK Back=Cancel", TCols);
+				return;
+			}
 			snprintf(line, sizeof(line), "Value:%ld", _ctx.editValue());
 			buffer.write(1, 0, line, TCols);
 			buffer.write(2, 0, "Up/Down change", TCols);
@@ -252,13 +341,13 @@ public:
 
 			// Selection marker
 			line[0] = (idx == _ctx.selected()) ? _selChar : ' ';
-			int cursor = 1;
+			int cursor = 2;
 
 			// Optional indicator for toggles
 			if (it.kind == MenuItem_ToggleEnabled && it.target) {
 				bool on = ((Enabled*)it.target)->enabled();
-				line[1] = on ? '*' : '-';
-				cursor = 2;
+				line[2] = on ? '*' : ' ';
+				cursor = 4;
 			}
 
 			// Label
