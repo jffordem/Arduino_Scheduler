@@ -341,13 +341,13 @@ public:
 
 			// Selection marker
 			line[0] = (idx == _ctx.selected()) ? _selChar : ' ';
-			int cursor = 2;
+			int cursor = 1;
 
 			// Optional indicator for toggles
 			if (it.kind == MenuItem_ToggleEnabled && it.target) {
 				bool on = ((Enabled*)it.target)->enabled();
-				line[2] = on ? '*' : ' ';
-				cursor = 4;
+				line[1] = on ? '*' : ' ';
+				cursor = 2;
 			}
 
 			// Label
