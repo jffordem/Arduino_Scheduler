@@ -16,7 +16,8 @@ enum MenuItemKind {
 	MenuItem_Submenu,
 	MenuItem_ToggleEnabled,
 	MenuItem_EditLong,
-	MenuItem_EnterLong
+	MenuItem_EnterLong,
+	MenuItem_EnterString
 };
 
 class MenuContext;
@@ -27,6 +28,9 @@ struct MenuItem {
 	void (*action)(MenuContext &ctx);
 	void *target;
 	long step;
+	int maxLen;
+	long shortDelayMs;
+	long longDelayMs;
 
 	static MenuItem Action(const char *labelValue, void (*fn)(MenuContext &ctx)) {
 		MenuItem i;
@@ -35,6 +39,9 @@ struct MenuItem {
 		i.action = fn;
 		i.target = 0;
 		i.step = 1;
+		i.maxLen = 0;
+		i.shortDelayMs = 750;
+		i.longDelayMs = 1500;
 		return i;
 	}
 	static MenuItem Submenu(const char *labelValue, void *menu) {
@@ -44,6 +51,9 @@ struct MenuItem {
 		i.action = 0;
 		i.target = menu;
 		i.step = 1;
+		i.maxLen = 0;
+		i.shortDelayMs = 750;
+		i.longDelayMs = 1500;
 		return i;
 	}
 	static MenuItem Toggle(const char *labelValue, Enabled &enabled) {
@@ -53,6 +63,9 @@ struct MenuItem {
 		i.action = 0;
 		i.target = &enabled;
 		i.step = 1;
+		i.maxLen = 0;
+		i.shortDelayMs = 750;
+		i.longDelayMs = 1500;
 		return i;
 	}
 	static MenuItem EditLong(const char *labelValue, long &value, long stepValue = 10) {
@@ -62,6 +75,9 @@ struct MenuItem {
 		i.action = 0;
 		i.target = &value;
 		i.step = stepValue;
+		i.maxLen = 0;
+		i.shortDelayMs = 750;
+		i.longDelayMs = 1500;
 		return i;
 	}
 	static MenuItem EnterLong(const char *labelValue, long &value) {
@@ -71,6 +87,21 @@ struct MenuItem {
 		i.action = 0;
 		i.target = &value;
 		i.step = 1;
+		i.maxLen = 0;
+		i.shortDelayMs = 750;
+		i.longDelayMs = 1500;
+		return i;
+	}
+	static MenuItem EnterString(const char *labelValue, char *value, int maxLenValue, long shortDelayMsValue = 750, long longDelayMsValue = 1500) {
+		MenuItem i;
+		i.label = labelValue;
+		i.kind = MenuItem_EnterString;
+		i.action = 0;
+		i.target = value;
+		i.step = 1;
+		i.maxLen = maxLenValue;
+		i.shortDelayMs = shortDelayMsValue;
+		i.longDelayMs = longDelayMsValue;
 		return i;
 	}
 };
@@ -87,6 +118,7 @@ public:
 };
 
 class MenuContext {
+	static const int MaxEditString = 32;
 	static const int MaxStack = 8;
 	const MenuScreen *_stack[MaxStack];
 	int _depth;
@@ -102,9 +134,19 @@ class MenuContext {
 	long _editOriginal;
 	long _enterValue;
 	bool _enterStarted;
+	char *_editString;
+	int _editStringMax;
+	int _editStringPos;
+	char _editStringOriginal[MaxEditString];
+	char _stringPendingKey;
+	int _stringPendingIndex;
+	unsigned long _stringLastPress;
+	long _stringShortDelay;
+	long _stringLongDelay;
 public:
-	MenuContext(const MenuScreen &root) : _depth(0), _selected(0), _top(0), _editing(false), _editValue(0), _editStep(1), _editLabel(0), _editKind(MenuItem_Action), _editOriginal(0), _enterValue(0), _enterStarted(false) {
+	MenuContext(const MenuScreen &root) : _depth(0), _selected(0), _top(0), _editing(false), _editValue(0), _editStep(1), _editLabel(0), _editKind(MenuItem_Action), _editOriginal(0), _enterValue(0), _enterStarted(false), _editString(0), _editStringMax(0), _editStringPos(0), _stringPendingKey(0), _stringPendingIndex(0), _stringLastPress(0), _stringShortDelay(750), _stringLongDelay(1500) {
 		_stack[0] = &root;
+		_editStringOriginal[0] = 0;
 	}
 
 	const MenuScreen &screen() const { return *_stack[_depth]; }
@@ -125,11 +167,21 @@ public:
 			if (_editKind == MenuItem_EnterLong && _editValue) {
 				*_editValue = _editOriginal;
 			}
+			if (_editKind == MenuItem_EnterString && _editString) {
+				strncpy(_editString, _editStringOriginal, (size_t)_editStringMax);
+				_editString[_editStringMax - 1] = 0;
+			}
 			_editing = false;
 			_editValue = 0;
 			_editLabel = 0;
 			_editKind = MenuItem_Action;
 			_enterStarted = false;
+			_editString = 0;
+			_editStringMax = 0;
+			_editStringPos = 0;
+			_stringPendingKey = 0;
+			_stringPendingIndex = 0;
+			_stringLastPress = 0;
 			return;
 		}
 		if (_depth > 0) {
@@ -169,6 +221,12 @@ public:
 			_editLabel = 0;
 			_editKind = MenuItem_Action;
 			_enterStarted = false;
+			_editString = 0;
+			_editStringMax = 0;
+			_editStringPos = 0;
+			_stringPendingKey = 0;
+			_stringPendingIndex = 0;
+			_stringLastPress = 0;
 			return;
 		}
 		const MenuItem &it = screen().item(_selected);
@@ -201,6 +259,35 @@ public:
 				_enterValue = _editOriginal;
 				_enterStarted = false;
 				break;
+			case MenuItem_EnterString:
+				_editing = true;
+				_editValue = 0;
+				_editStep = 1;
+				_editLabel = it.label;
+				_editKind = MenuItem_EnterString;
+				_editString = (char*)it.target;
+				_editStringMax = it.maxLen;
+				if (_editStringMax <= 0) _editStringMax = 1;
+				if (_editStringMax > MaxEditString) _editStringMax = MaxEditString;
+				_stringShortDelay = it.shortDelayMs;
+				_stringLongDelay = it.longDelayMs;
+				strncpy(_editStringOriginal, _editString ? _editString : "", (size_t)_editStringMax);
+				_editStringOriginal[_editStringMax - 1] = 0;
+				if (_editString) {
+					_editString[_editStringMax - 1] = 0;
+					int len = (int)strlen(_editString);
+					int maxChars = _editStringMax - 2;
+					if (maxChars < 0) maxChars = 0;
+					_editStringPos = len;
+					if (_editStringPos < 0) _editStringPos = 0;
+					if (_editStringPos > maxChars) _editStringPos = maxChars;
+				} else {
+					_editStringPos = 0;
+				}
+				_stringPendingKey = 0;
+				_stringPendingIndex = 0;
+				_stringLastPress = 0;
+				break;
 		}
 	}
 
@@ -216,7 +303,26 @@ public:
 
 	const char *editLabel() const { return _editLabel; }
 	long editValue() const { return _editKind == MenuItem_EnterLong ? _enterValue : (_editValue ? *_editValue : 0); }
+	const char *editString() const { return _editString ? _editString : ""; }
+	int editStringPos() const { return _editStringPos; }
 	MenuItemKind editKind() const { return _editKind; }
+	void tick() {
+		if (!_editing) return;
+		if (_editKind != MenuItem_EnterString) return;
+		if (!_editString) return;
+		if (!_stringPendingKey) return;
+		unsigned long now = millis();
+		if ((long)(now - _stringLastPress) > _stringLongDelay) {
+			int maxChars = _editStringMax - 2;
+			if (maxChars < 0) maxChars = 0;
+			if (_editStringPos < maxChars) {
+				_editStringPos++;
+			}
+			_stringPendingKey = 0;
+			_stringPendingIndex = 0;
+			_stringLastPress = 0;
+		}
+	}
 	bool handleEditKey(char ch) {
 		if (!_editing) return false;
 		if (_editKind == MenuItem_EnterLong) {
@@ -256,6 +362,86 @@ public:
 				return true;
 			}
 			return false;
+		}
+		if (_editKind == MenuItem_EnterString) {
+			if (!_editString) return true;
+			if (ch == KeypadKey_Pound || ch == KeypadKey_Hash || ch == KeypadKey_Octothorpe) {
+				activate();
+				return true;
+			}
+			if (ch == KeypadKey_Asterisk) {
+				if (_stringPendingKey) {
+					_editString[_editStringPos] = 0;
+					_stringPendingKey = 0;
+					_stringPendingIndex = 0;
+					_stringLastPress = 0;
+					return true;
+				}
+				if (_editStringPos > 0) {
+					_editStringPos--;
+					_editString[_editStringPos] = 0;
+				}
+				return true;
+			}
+
+			char key = ch;
+			const char *opts = 0;
+			switch (key) {
+				case KeypadKey_0: opts = "0"; break;
+				case KeypadKey_1: opts = "1"; break;
+				case KeypadKey_2: opts = "2abcABC"; break;
+				case KeypadKey_3: opts = "3defDEF"; break;
+				case KeypadKey_4: opts = "4ghiGHI"; break;
+				case KeypadKey_5: opts = "5jklJKL"; break;
+				case KeypadKey_6: opts = "6mnoNBO"; break;
+				case KeypadKey_7: opts = "7pqrsPQRS"; break;
+				case KeypadKey_8: opts = "8tuvTUV"; break;
+				case KeypadKey_9: opts = "9wxyzWXYZ"; break;
+				default: opts = 0; break;
+			}
+			if (!opts) return false;
+
+			unsigned long now = millis();
+			long elapsed = _stringLastPress ? (long)(now - _stringLastPress) : MAX_LONG;
+			int maxChars = _editStringMax - 2;
+			if (maxChars < 0) maxChars = 0;
+			if (maxChars < 0) return true;
+
+			if (_stringPendingKey) {
+				if (elapsed <= _stringShortDelay) {
+					if (key == _stringPendingKey) {
+						int n = (int)strlen(opts);
+						if (n <= 0) n = 1;
+						_stringPendingIndex = (_stringPendingIndex + 1) % n;
+						_editString[_editStringPos] = opts[_stringPendingIndex];
+						_editString[_editStringMax - 1] = 0;
+						_stringLastPress = now;
+						return true;
+					}
+					if (_editStringPos < maxChars) {
+						_editStringPos++;
+					}
+				} else {
+					if (_editStringPos < maxChars) {
+						_editStringPos++;
+					}
+				}
+			}
+
+			if (_editStringPos >= maxChars) {
+				_editStringPos = maxChars;
+			}
+			int n = (int)strlen(opts);
+			if (n <= 0) n = 1;
+			_stringPendingKey = key;
+			_stringPendingIndex = 0;
+			_editString[_editStringPos] = opts[_stringPendingIndex];
+			if (_editStringPos + 1 < _editStringMax) {
+				_editString[_editStringPos + 1] = 0;
+			}
+			_editString[_editStringMax - 1] = 0;
+			_stringLastPress = now;
+			return true;
 		}
 		return false;
 	}
@@ -300,7 +486,36 @@ class MenuRenderer : public DisplayDrawable<TDisplay, TRows, TCols> {
 	char _selChar;
 public:
 	MenuRenderer(MenuContext &ctx, char selectionChar = '>') : _ctx(ctx), _selChar(selectionChar) { }
+	bool wantsCursor() override {
+		if (!_ctx.editing()) return false;
+		MenuItemKind k = _ctx.editKind();
+		return k == MenuItem_EnterLong || k == MenuItem_EnterString;
+	}
+	void cursorPosition(int &col, int &row) override {
+		col = 0;
+		row = 0;
+		if (!_ctx.editing()) return;
+		MenuItemKind k = _ctx.editKind();
+		if (k == MenuItem_EnterString) {
+			row = 1;
+			col = _ctx.editStringPos();
+			if (col < 0) col = 0;
+			if (col >= TCols) col = TCols - 1;
+			return;
+		}
+		if (k == MenuItem_EnterLong) {
+			row = 1;
+			char temp[32];
+			temp[0] = 0;
+			snprintf(temp, sizeof(temp), "Enter:%ld", _ctx.editValue());
+			col = (int)strlen(temp);
+			if (col < 0) col = 0;
+			if (col >= TCols) col = TCols - 1;
+			return;
+		}
+	}
 	void draw(DisplayBuffer<TRows, TCols> &buffer) {
+		_ctx.tick();
 		buffer.clear(' ');
 
 		// Header line
@@ -315,6 +530,12 @@ public:
 			if (_ctx.editKind() == MenuItem_EnterLong) {
 				snprintf(line, sizeof(line), "Enter:%ld", _ctx.editValue());
 				buffer.write(1, 0, line, TCols);
+				buffer.write(2, 0, "0-9 type *=Del", TCols);
+				buffer.write(3, 0, "#=OK Back=Cancel", TCols);
+				return;
+			}
+			if (_ctx.editKind() == MenuItem_EnterString) {
+				buffer.write(1, 0, _ctx.editString(), TCols);
 				buffer.write(2, 0, "0-9 type *=Del", TCols);
 				buffer.write(3, 0, "#=OK Back=Cancel", TCols);
 				return;

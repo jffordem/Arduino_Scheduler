@@ -64,6 +64,8 @@ template <class TDisplay, int TRows = 4, int TCols = 20>
 class DisplayDrawable {
 public:
 	virtual void draw(DisplayBuffer<TRows, TCols> &buffer) = 0;
+	virtual bool wantsCursor() { return false; }
+	virtual void cursorPosition(int &col, int &row) { col = 0; row = 0; }
 };
 
 template <class TDisplay, int TRows = 4, int TCols = 20>
@@ -131,38 +133,47 @@ public:
  		_drawable.draw(_desired);
  	}
  	void flush(bool forceFull) {
- 		if (forceFull || !_hasFlushed) {
- 			_flushed.clear((char)0);
- 		}
- 		for (int row = 0; row < DisplayBuffer<TRows, TCols>::Rows; row++) {
- 			int col = 0;
- 			while (col < DisplayBuffer<TRows, TCols>::Cols) {
- 				char desiredCh = _desired.get(row, col);
- 				char flushedCh = _flushed.get(row, col);
- 				bool changed = forceFull || !_hasFlushed || desiredCh != flushedCh;
- 				if (!changed) {
- 					col++;
- 					continue;
- 				}
- 				int start = col;
- 				char run[DisplayBuffer<TRows, TCols>::Cols + 1];
- 				int runLen = 0;
- 				while (col < DisplayBuffer<TRows, TCols>::Cols) {
- 					desiredCh = _desired.get(row, col);
- 					flushedCh = _flushed.get(row, col);
- 					changed = forceFull || !_hasFlushed || desiredCh != flushedCh;
- 					if (!changed) break;
- 					run[runLen++] = desiredCh;
- 					_flushed.set(row, col, desiredCh);
- 					col++;
- 				}
- 				run[runLen] = 0;
- 				_display.setCursor(start, row);
- 				_display.print(run);
- 			}
- 		}
- 		_hasFlushed = true;
- 	}
+		if (forceFull || !_hasFlushed) {
+			_flushed.clear((char)0);
+		}
+		for (int row = 0; row < DisplayBuffer<TRows, TCols>::Rows; row++) {
+			int col = 0;
+			while (col < DisplayBuffer<TRows, TCols>::Cols) {
+				char desiredCh = _desired.get(row, col);
+				char flushedCh = _flushed.get(row, col);
+				bool changed = forceFull || !_hasFlushed || desiredCh != flushedCh;
+				if (!changed) {
+					col++;
+					continue;
+				}
+				int start = col;
+				char run[DisplayBuffer<TRows, TCols>::Cols + 1];
+				int runLen = 0;
+				while (col < DisplayBuffer<TRows, TCols>::Cols) {
+					desiredCh = _desired.get(row, col);
+					flushedCh = _flushed.get(row, col);
+					changed = forceFull || !_hasFlushed || desiredCh != flushedCh;
+					if (!changed) break;
+					run[runLen++] = desiredCh;
+					_flushed.set(row, col, desiredCh);
+					col++;
+				}
+				run[runLen] = 0;
+				_display.setCursor(start, row);
+				_display.print(run);
+			}
+		}
+		if (_drawable.wantsCursor()) {
+			int cursorCol = 0;
+			int cursorRow = 0;
+			_drawable.cursorPosition(cursorCol, cursorRow);
+			_display.cursor();
+			_display.setCursor((uint8_t)cursorCol, (uint8_t)cursorRow);
+		} else {
+			_display.noCursor();
+		}
+		_hasFlushed = true;
+	}
 };
 
 template <class TDisplay, int TRows = 4, int TCols = 20>
