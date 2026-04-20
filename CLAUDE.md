@@ -62,12 +62,12 @@ Arduino.hpp (core shim)
     ├── Led.hpp → PinIO + Mapper
     ├── ButtonHandler.hpp → EdgeDetector + PinIO + Mapper
     ├── EncoderWheel.hpp → PinIO + EdgeDetector + Mapper + SerialPlot
-    ├── Graphics.hpp → Clock + EdgeDetector
     ├── Display.hpp → Scheduler
     ├── MenuUI.hpp → Display + Scheduler
     ├── KeypadHandler.hpp → Scheduler
     ├── LK204_25.hpp → Wire/I2C LCD + Keypad driver
-    └── Persistent.hpp → Clock (Timer)
+    ├── Persistent.hpp → Clock (Timer)
+    └── Graphics.hpp → Clock + EdgeDetector  (Adafruit_GFX display driver skeleton; used by examples/Pong)
 ```
 
 ## Module Quick Reference
@@ -83,6 +83,7 @@ Arduino.hpp (core shim)
 | Value transforms / logic | `Mapper.hpp` |
 | Real-time debug | `SerialPlot.hpp` |
 | Save values to EEPROM | `Persistent.hpp` |
+| RAM diagnostics | `Diagnostics.hpp` |
 | Known hardware layouts | `BreadboardConfig.hpp`, `LeonardoConfig.hpp` |
 
 ## Display & Menu System (Recent Additions)
