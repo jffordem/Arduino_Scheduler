@@ -125,6 +125,76 @@ public:
 	}
 };
 
+// Two-slot interrupt-driven encoder support.
+// On R4 Minima (RA4M1) all digital pins support attachInterrupt — no rewiring needed.
+// On ATmega32u4 (Pro Micro) only pins 0, 1, 2, 3, 7 are INT-capable.
+//
+// Usage (drop-in for EncoderControl):
+//   long speed = 0;
+//   InterruptEncoderControl<long> enc(schedule, Config.Left.Encoder, speed, 20, 100, /*slot=*/0);
+//
+// The slot parameter (0 or 1) selects which ISR pair to use; each physical
+// encoder must use a different slot.
+
+namespace _EncoderISR {
+    volatile int _delta[2];
+    int _dataPin[2];
+    inline void tick(int s) { _delta[s] += digitalRead(_dataPin[s]) ? +1 : -1; }
+    void isr0() { tick(0); }
+    void isr1() { tick(1); }
+}
+
+class InterruptEncoderWheel : private Scheduled {
+    volatile int &_delta;
+    int &_value;
+    int _limit;
+public:
+    InterruptEncoderWheel(Schedule &schedule, int clockPin, int dataPin,
+                           int &value, int limit, int slot) :
+        Scheduled(schedule),
+        _delta(_EncoderISR::_delta[slot & 1]),
+        _value(value), _limit(limit) {
+        int s = slot & 1;
+        _EncoderISR::_dataPin[s] = dataPin;
+        _EncoderISR::_delta[s] = 0;
+        pinMode(clockPin, INPUT_PULLUP);
+        pinMode(dataPin, INPUT_PULLUP);
+        attachInterrupt(digitalPinToInterrupt(clockPin),
+                        s == 0 ? _EncoderISR::isr0 : _EncoderISR::isr1,
+                        RISING);
+    }
+    void poll() override {
+        int d;
+        noInterrupts();
+        d = _delta;
+        _delta = 0;
+        interrupts();
+        if (d != 0) {
+            _value = constrain(_value + d, 0, _limit);
+        }
+    }
+};
+
+// Maps encoder position over [0, maxVal], starting at the midpoint.
+// Fixes the half-range issue in EncoderControl (which maps from -sensitivity
+// but constrains to [0, sensitivity], making the lower half unreachable).
+template <class T>
+class InterruptEncoderControl : private InterruptEncoderWheel, private Mapper<int, T> {
+    int _encoderValue;
+public:
+    InterruptEncoderControl(Schedule &schedule, const EncoderConfig &config,
+                             T &value, int sensitivity, T maxVal, int slot) :
+        InterruptEncoderControl(schedule, config.clockPin, config.dataPin,
+                                value, sensitivity, maxVal, slot) { }
+    InterruptEncoderControl(Schedule &schedule, int clockPin, int dataPin,
+                             T &value, int sensitivity, T maxVal, int slot) :
+        InterruptEncoderWheel(schedule, clockPin, dataPin, _encoderValue,
+                              abs(sensitivity), slot),
+        Mapper<int, T>(schedule, _encoderValue, value,
+                       0, abs(sensitivity), (T)0, maxVal),
+        _encoderValue(abs(sensitivity) / 2) { }
+};
+
 template <class T>
 class EncoderSelector : private EncoderWheel, private Chooser<int, T> {
 	int _encoderValue = 0;

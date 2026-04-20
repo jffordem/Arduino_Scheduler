@@ -30,7 +30,9 @@ SOFTWARE.
 #include <ButtonHandler.hpp>
 
 /*
-Note: the PWM pins on the Pro Micro are 3, 5, 6, 9, 10.
+Arduino UNO R4 Minima (RA4M1) notes:
+  PWM pins: 3, 5, 6, 9, 10, 11
+  All digital pins support attachInterrupt() — no dedicated INT pin constraints.
 */
 
 struct {
