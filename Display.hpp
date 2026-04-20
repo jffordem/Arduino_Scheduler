@@ -199,8 +199,11 @@ public:
   Spinner(int row, int col, Enabled &enabled, const char *chars = "* "): _row(row), _col(col), _enabled(enabled), _idx(0), _chars(chars) {}
   void draw(DisplayBuffer<TRows, TCols> &buffer) {
     if (_enabled.enabled()) {
-      buffer.set(_row, _col, _chars[_idx]);
-      _idx = (_idx + 1) % (int)strlen(_chars);
+      int len = (int)strlen(_chars);
+      if (len > 0) {
+        buffer.set(_row, _col, _chars[_idx]);
+        _idx = (_idx + 1) % len;
+      }
     } else {
       buffer.set(_row, _col, ' ');
     }
