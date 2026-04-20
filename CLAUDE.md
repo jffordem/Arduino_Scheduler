@@ -66,7 +66,8 @@ Arduino.hpp (core shim)
     ├── Display.hpp → Scheduler
     ├── MenuUI.hpp → Display + Scheduler
     ├── KeypadHandler.hpp → Scheduler
-    └── LK204_25.hpp → Wire/I2C LCD + Keypad driver
+    ├── LK204_25.hpp → Wire/I2C LCD + Keypad driver
+    └── Persistent.hpp → Clock (Timer)
 ```
 
 ## Module Quick Reference
@@ -81,6 +82,7 @@ Arduino.hpp (core shim)
 | Character LCD + menu | `Display.hpp`, `MenuUI.hpp`, `LK204_25.hpp` |
 | Value transforms / logic | `Mapper.hpp` |
 | Real-time debug | `SerialPlot.hpp` |
+| Save values to EEPROM | `Persistent.hpp` |
 | Known hardware layouts | `BreadboardConfig.hpp`, `LeonardoConfig.hpp` |
 
 ## Display & Menu System (Recent Additions)
