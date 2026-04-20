@@ -31,11 +31,13 @@ SOFTWARE.
 //   o = right color, wrong position (white peg)
 //
 // Controls:
-//   Encoder Left  : cycle the selected peg position (1-2-3-4)
-//   Encoder Right : change the color at the selected position
-//   Key A         : submit guess  /  start new game when game over
-//   Key B         : clear current guess
-//   Key *         : new game (any time)
+//   Encoder Left  (wheel) : cycle the selected peg position (1-2-3-4)
+//   Encoder Left  (click) : advance to next peg position
+//   Encoder Right (wheel) : change the color at the selected position
+//   Encoder Right (click) : submit guess  /  new game when game over
+//   Key A                 : submit guess  /  new game when game over
+//   Key B                 : clear current guess
+//   Key *                 : new game (any time)
 //
 // Display layout during play:
 //   Row 0: "MASTERMIND  G:02/10 "
@@ -277,6 +279,21 @@ public:
     }
 };
 
+// ─── Encoder button callbacks ─────────────────────────────────────────────────
+// Free functions required because ButtonHandler takes void(*)() function pointers.
+
+static void onLeftButtonPress() {
+    // Click left knob to step forward through peg positions.
+    if (game.isPlaying()) game.nextPos();
+    else if (game.isAttract()) game.begin();
+}
+
+static void onRightButtonPress() {
+    // Click right knob to submit the current guess (or start / restart).
+    if (game.isPlaying()) game.submit();
+    else                  game.begin();
+}
+
 // ─── Keypad handler ───────────────────────────────────────────────────────────
 
 class MastermindKeys : public KeypadKeyHandler {
@@ -323,6 +340,9 @@ KeypadHandler  keypadHandler(schedule, keypad, keys);
 
 PosEncoder   posEnc  (schedule, Config.Left.Encoder,  game);
 ColorEncoder colorEnc(schedule, Config.Right.Encoder, game);
+
+ButtonHandler leftEncBtn (schedule, Config.Left.Button,  onLeftButtonPress);
+ButtonHandler rightEncBtn(schedule, Config.Right.Button, onRightButtonPress);
 
 // ─── Sketch entry points ──────────────────────────────────────────────────────
 
