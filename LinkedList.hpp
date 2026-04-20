@@ -65,8 +65,9 @@ public:
 template <class T>
 class List : public IList<T> {
     ListPair<T> *_list;
+    int _length;
 public:
-    List(T *items = NULL, int count = 0) : _list(NULL) {
+    List(T *items = NULL, int count = 0) : _list(NULL), _length(0) {
         addAll(items, count);
     }
     void addAll(T *items, int count) {
@@ -76,6 +77,7 @@ public:
     }
     void add(T item) {
         _list = new ListPair<T>(item, _list);
+        _length++;
     }
     void clear() {
         while (_list) {
@@ -83,11 +85,12 @@ public:
             _list = _list->cdr();
             delete temp;
         }
+        _length = 0;
     }
     void remove(T item) {
         ListPair<T> *temp = _list;
-         NULL;
         _list = NULL;
+        _length = 0;
         while (temp) {
             T value = temp->car();
             ListPair<T> *dead = temp;
@@ -111,21 +114,13 @@ public:
     ListPair<T> *head() {
         return _list;
     }
-    int length() const {
-        int count = 0;
-        ListPair<T> *temp = _list;
-        while (temp) {
-            count++;
-            temp = temp->cdr();
-        }
-        return count;
-    }
+    int length() const { return _length; }
     T item(int index) const {
         ListPair<T> *temp = _list;
         for (int i = 0; i < index && temp; i++) {
             temp = temp->cdr();
         }
-        return temp->car();
+        return temp ? temp->car() : T();
     }
 };
 
@@ -160,7 +155,7 @@ public:
 
 #else // USE_LINKED_LIST
 
-#define MAX_LIST_SIZE 30
+#define MAX_LIST_SIZE 50
 
 template <class T>
 class List : public IList<T> {
