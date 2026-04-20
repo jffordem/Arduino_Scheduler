@@ -177,7 +177,7 @@ public:
 class PollGroup : public PollerComposite, public Scheduled, public Enabled {
 	bool _enabled;
 public:
-	PollGroup(Schedule &schedule) : Scheduled(schedule) { }
+	PollGroup(Schedule &schedule) : Scheduled(schedule), _enabled(true) { }
 	void enable(bool value) { _enabled = value; }
 	void toggle() { enable(!_enabled); }
 	bool enabled() const { return _enabled; }
