@@ -22,10 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-/* I want a driver module for a nema 17 stepper motor.  It needs a fine, and coarse stepping mode, and should work with common stepper libraries. */
+#ifndef NEMA17DRIVER_HPP
+#define NEMA17DRIVER_HPP
 
-#ifndef Nema17Driver_hpp
-#define Nema17Driver_hpp
+/* I want a driver module for a nema 17 stepper motor.  It needs a fine, and coarse stepping mode, and should work with common stepper libraries. */
 
 #include <Arduino.hpp>
 #include <Scheduler.hpp>
@@ -92,4 +92,4 @@ public:
     }
 };
 
-#endif /* Nema17Driver_hpp */
+#endif // NEMA17DRIVER_HPP

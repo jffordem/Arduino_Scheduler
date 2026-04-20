@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef BREADBOARDCONFIG_HPP
-#define BREADBOARDCONFIG_HPP
+#ifndef MINIMACONFIG_HPP
+#define MINIMACONFIG_HPP
 
 #include <Led.hpp>
 #include <EncoderWheel.hpp>
@@ -53,4 +53,4 @@ struct {
   } B; // Copy of Right
 } Config;
 
-#endif
+#endif // MINIMACONFIG_HPP

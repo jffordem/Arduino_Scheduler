@@ -22,6 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#ifndef KEYPAD_HANDLER_HPP
+#define KEYPAD_HANDLER_HPP
+
 /* Keypad key handler for LK204_25 keypad.
  * The keypad geometry is this.
  * A[1] B[2] C[3] D[A]
@@ -35,9 +38,6 @@ SOFTWARE.
  * ToggleKeypadKeyHandler toggler('D', enabled);
  * KeypadHandler handller(schedule, keypad, toggler);
 */
-
-#ifndef KEYPAD_HANDLER_HPP
-#define KEYPAD_HANDLER_HPP
 
 #include <Scheduler.hpp>
 #include <LK204_25.hpp>

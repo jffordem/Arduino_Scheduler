@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef HID_HPP
-#define HID_HPP
+#ifndef HIDIO_HPP
+#define HIDIO_HPP
 
 #include <Scheduler.hpp>
 #include <Clock.hpp>
