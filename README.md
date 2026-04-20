@@ -1,143 +1,190 @@
-# Arduino
-Projects and libraries for Arduino project development.
+# Arduino Scheduler Library
 
-## License
-MIT License (See LICENSE file for details)
+Composable abstractions for Arduino development. Build complex behaviors by combining small, focused classes — inputs (buttons, encoders, keypads), outputs (LEDs, HID keyboard/mouse), display/menu systems, and a central polling scheduler that ties them together.
 
-## Overview
-Re-working my 'scheduler' concepts.
+**License:** MIT
 
-This version started with the attempt to use an encoder wheel to control repeated casting in Skyrim.
+## Quick Start
 
-Need a better convention for things that observe pins (like an encoder wheel, or button), and things that
-drive real-world objects like LEDs, keyboard/mouse actions, servos and steppers.
+Every sketch follows the same three-line pattern:
 
-In between are elements like clocks and mappers, inverters, handlers, starters-and-stoppers that allow
-the system to behave in useful ways.
+```cpp
+MainSchedule schedule;
+// ... declare components, passing schedule as first argument ...
+void setup() { schedule.begin(); }
+void loop()  { schedule.poll(); }
+```
 
-These objects should be easy to compose and repeat black-box abstractions of increasingly complex units.
-
-One significiant improvement in this version was to have the scheduler passed in to any object that needs
-to be polled.  This reduces the risk that you'd forget to add it, because it isn't clear which things are
-polled and which work independently.
-
-## Modules
-Arduino.hpp
-* Arduino core shim for editor/lint friendliness
-
-LinkedList.hpp
-* Enumerable
-* IList
-* Pair
-* ListPair
-* List
-* countZ
-
-Scheduler.hpp
-* Pressable
-* Poller
-* Enabled
-* Composite
-* PressComposite
-* EnableComposite
-* PollerComposite
-* PollGroup
-* MainSchedule
-* Scheduled
-
-Clock.hpp : Scheduler.hpp
-* Timer
-* Clock
-* SpeedTest
-
-PinIO.hpp : Scheduler.hpp
-* DigitalRead
-* DigitalWrite
-* AnalogRead
-* AnalogWrite
-
-EdgeDetector.hpp : Scheduler.hpp
-* EdgeDetectorBase
-* Trigger
-* TriggerFunction
-* EdgeDetector
-* PeriodicTrigger
-* Counter
-* FrequencyDivider
-
-HIDIO.hpp : Scheduler.hpp, Clock.hpp
-* ValuePresser
-* PressHandler
-* KeyPress
-* MouseButton
-* DummyButton
-* ButtonController
-* PressFollower
-
-Mapper.hpp : Scheduler.hpp
-* Mapper
-* Inverter
-* AndInputs
-* OrInputs
-* Constrain
-
-SerialPlot.hpp : Scheduler.hpp, EdgeDetector.hpp
-* Channels
-* Plotted
-* PlotComposite
-* PlotBool
-* PlotNum
-* SerialPlot
-
-Led.hpp : Scheduler.hpp, PinIO.hpp, Mapper.hpp
-* LedConfig
-* DigitalLED
-* SevenSegLED
-* Pot
-
-ButtonHandler.hpp : Scheduler.hpp, EdgeDetector.hpp, PinIO.hpp, Mapper.hpp
-* ButtonConfig
-* ButtonValue
-* ButtonHandler
-* Button
-* ToggleButton
-* ActiveBuzzer
-* PassiveBuzzer
-
-EncoderWheel.hpp : Scheduler.hpp, PinIO.hpp, EdgeDetector.hpp, Mapper.hpp, SerialPlot.hpp
-* EncoderConfig
-* EncoderWheel
-* EncoderControl
-
-Graphics.hpp : Clock.hpp, EdgeDetector.hpp
-* Drawable
-* DrawableComposite
-* MainWindow
-* VirtualLED
-
-BreadboardConfig.hpp : Led.hpp, EncoderWheel.hpp, ButtonHandler.hpp
-* Config
-
-LeonardoConfig.hpp : Led.hpp, EncoderWheel.hpp, ButtonHandler.hpp
-* Config
+Passing `schedule` to a component automatically registers it for polling. You never manually add things to the loop.
 
 ## Examples
-Composition with objects - including inheritance - can be seen in things like the ButtonHandler and 
-the ClockToggleButton.  For example, here's a composition for a "Blinky".
 
-```C++
+### Blinky — LED + Clock
+
+Compose `Clock` and `DigitalLED` to blink without `delay()`:
+
+```cpp
+#include <Scheduler.hpp>
+#include <Clock.hpp>
+#include <Led.hpp>
+
 class Blinky : public Clock, private DigitalLED {
   bool _ledState;
 public:
-  Blinky(MainSchedule &schedule, long &offTime, long &onTime, int ledPin) :
-    Clock(schedule, offTime, onTime, offset, _ledState),
-    DigitalLED(schedule, _ledState, ledPin) { }
+  Blinky(Schedule &s, long &offTime, long &onTime, int pin) :
+    Clock(s, offTime, onTime, _ledState),
+    DigitalLED(s, _ledState, pin),
+    _ledState(LOW) { }
 };
-const int ledPin = 17;
-long onTime = 100;
-long offTime = 200;
+
+long onTime = 100, offTime = 200;
 MainSchedule schedule;
-Blinky blinky(schedule, offTime, onTime, 0, ledPin);
+Blinky blinky(schedule, offTime, onTime, LED_BUILTIN);
 void setup() { schedule.begin(); }
-void loop() { schedule.poll(); }
+void loop()  { schedule.poll(); }
 ```
+
+---
+
+### Button → HID Keyboard
+
+Press a button, send a keystroke. Hardware polarity is handled by `lowIsPressed`:
+
+```cpp
+#include <Scheduler.hpp>
+#include <ButtonHandler.hpp>
+#include <HIDIO.hpp>
+
+MainSchedule schedule;
+KeyPress escKey(KEY_ESC);
+Button btn(schedule, 7, /*lowIsPressed=*/true, escKey);
+void setup() { schedule.begin(); }
+void loop()  { schedule.poll(); }
+```
+
+Use `ButtonHandler` instead of `Button` when you need custom press/release callbacks:
+
+```cpp
+void onPress()   { /* ... */ }
+void onRelease() { /* ... */ }
+ButtonHandler btn(schedule, 7, &onPress, &onRelease);
+```
+
+---
+
+### Encoder → Value
+
+Map encoder rotation to a `long` value clamped to a range:
+
+```cpp
+#include <Scheduler.hpp>
+#include <EncoderWheel.hpp>
+
+long speed = 50;  // starts at midpoint
+MainSchedule schedule;
+EncoderControl<long> encoder(schedule, {clockPin, dataPin}, speed, /*min=*/0, /*max=*/100);
+void setup() { schedule.begin(); }
+void loop()  { schedule.poll(); }
+```
+
+---
+
+### Character LCD Menu
+
+A complete retained-mode menu for a 4×20 character LCD. Uses `Display.hpp`, `MenuUI.hpp`, and `LK204_25.hpp`:
+
+```cpp
+#include <Wire.h>
+#include <Scheduler.hpp>
+#include <Display.hpp>
+#include <MenuUI.hpp>
+#include <KeypadHandler.hpp>
+#include <LK204_25.hpp>
+
+MainSchedule schedule;
+LK204_25_LCD lcd;
+LK204_25_Keypad keypad;
+
+long brightness = 50;
+
+void resetBrightness(MenuContext &) { brightness = 50; }
+
+MenuItem items[] = {
+    MenuItem::EditLong("Brightness", brightness, /*step=*/5),
+    MenuItem::Action("Reset", &resetBrightness),
+};
+MenuScreen root("Settings", items, 2);
+
+MenuContext menu(root);
+MenuRenderer<LK204_25_LCD, 4, 20> renderer(menu);
+MainDisplay<LK204_25_LCD, 4, 20> display(schedule, lcd, renderer, /*refreshMs=*/125);
+
+MenuKeymap keymap = {
+    /*up*/ KeypadKey_2, /*down*/ KeypadKey_8,
+    /*back*/ KeypadKey_D, /*select*/ KeypadKey_A,
+    /*line1..4*/ KeypadKey_A, KeypadKey_B, KeypadKey_C, KeypadKey_D
+};
+MenuKeypadController menuKeys(menu, keymap);
+KeypadHandler keypadHandler(schedule, keypad, menuKeys);
+
+void setup() { keypad.begin(); display.begin(); schedule.begin(); }
+void loop()  { schedule.poll(); }
+```
+
+`MainDisplay` does smart incremental flushing — only changed characters are written to the LCD, with a full refresh every 5 seconds (configurable).
+
+**Menu item types:**
+
+| Factory method | What it does |
+|---|---|
+| `MenuItem::Action("label", fn)` | Calls `fn(ctx)` on select |
+| `MenuItem::Submenu("label", &screen)` | Navigates into another `MenuScreen` |
+| `MenuItem::Toggle("label", enabled)` | Calls `toggle()` on an `Enabled` object; shows `*` when on |
+| `MenuItem::EditLong("label", value, step)` | Adjust a `long` with up/down keys |
+| `MenuItem::EnterLong("label", value)` | Type a number with the keypad (`*`=backspace, `#`=confirm) |
+| `MenuItem::EnterString("label", buf, maxLen)` | T9-style text entry |
+
+See `examples/HiLoGame/` for a full working game built with this system.
+
+---
+
+### Displaying Values on Screen
+
+Use `DisplayValue` to show live data without a full menu:
+
+```cpp
+long score = 0;
+DisplayValue<LK204_25_LCD, long, 4, 20> scoreDisplay(/*row=*/0, /*col=*/0, "Score: ", score, "");
+```
+
+---
+
+## Modules
+
+```
+Arduino.hpp         — Core shim for editor/lint support
+LinkedList.hpp      — List<T>, Enumerable<T>, countZ()
+Scheduler.hpp       — Poller, Pressable, Enabled, Composite, MainSchedule
+Clock.hpp           — Timer, Clock, PeriodicTrigger, SpeedTest
+PinIO.hpp           — DigitalRead, DigitalWrite, AnalogRead, AnalogWrite
+EdgeDetector.hpp    — EdgeDetector, Trigger, Counter, FrequencyDivider
+Mapper.hpp          — Mapper, Inverter, Constrain, AndInputs, OrInputs, Chooser
+HIDIO.hpp           — KeyPress, MouseButton, ButtonController, ValuePresser
+Led.hpp             — DigitalLED, SevenSegLED, Pot
+ButtonHandler.hpp   — Button, ButtonHandler, ToggleButton, ActiveBuzzer, PassiveBuzzer
+EncoderWheel.hpp    — EncoderWheel, EncoderControl
+KeypadHandler.hpp   — KeypadHandler, KeypadKeyHandler, ToggleKeypadKeyHandler
+Display.hpp         — DisplayBuffer, MainDisplay, DisplayLabel, DisplayValue, Spinner
+MenuUI.hpp          — MenuItem, MenuScreen, MenuContext, MenuRenderer, MenuKeypadController
+LK204_25.hpp        — LK204_25_LCD, LK204_25_Keypad  (I2C character LCD + keypad)
+Graphics.hpp        — Drawable, DrawableComposite, MainWindow, VirtualLED
+SerialPlot.hpp      — SerialPlot, PlotBool, PlotNum  (real-time serial debug)
+BreadboardConfig.hpp / LeonardoConfig.hpp — Pre-wired pin configurations
+```
+
+## Design Notes
+
+- **Polling over interrupts.** All detection is synchronous and deterministic. Default max pollers: 50 (change `MAX_POLLERS` in `Scheduler.hpp`).
+- **Hardware abstraction via config flags.** `ButtonConfig::lowIsPressed` and `LedConfig::lowIsOn` handle active-high vs active-low hardware without conditional logic in your code.
+- **Header-only.** Include only what you need; unused modules cost nothing.
+- Enable the `DEBUG` macro in `Arduino.hpp` to activate serial output. Use `SerialPlot` for real-time signal visualization.
