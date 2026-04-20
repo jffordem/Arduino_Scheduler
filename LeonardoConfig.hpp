@@ -30,10 +30,24 @@ SOFTWARE.
 #include <ButtonHandler.hpp>
 
 /*
-Note: the PWM pins on the Leonardo are marked with a dash.
-They are near the reset button.
-Pins: 3, 5, 6, 9, 10, 11, 13.
+Arduino Leonardo (ATmega32u4) notes:
+  PWM pins: 3, 5, 6, 9, 10, 11, 13.
+  INT-capable pins: 0, 1, 2, 3, 7.
+
+  Encoder B: clock=7  -> INT-capable  -> InterruptEncoderControl
+  Encoder A: clock=10 -> NOT INT-capable -> EncoderControl (polling fallback)
+  To add interrupt support for Encoder A, rewire its clock to pin 0, 1, 2, 3, or 7.
 */
+
+// Board-selected encoder class aliases. Use these in sketches instead of naming
+// the class directly so the right implementation is chosen at compile time.
+#if defined(__AVR_ATmega32U4__)
+  template <class T> using EncoderBControl = InterruptEncoderControl<T>;
+  template <class T> using EncoderAControl = EncoderControl<T>;  // pin 10 not INT-capable
+#else
+  template <class T> using EncoderBControl = InterruptEncoderControl<T>;
+  template <class T> using EncoderAControl = InterruptEncoderControl<T>;
+#endif
 
 struct {
   const LedConfig DefaultLed = { .pin = LED_BUILTIN, .lowIsOn = false };

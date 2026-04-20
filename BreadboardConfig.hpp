@@ -30,8 +30,24 @@ SOFTWARE.
 #include <ButtonHandler.hpp>
 
 /*
-Note: the PWM pins on the Pro Micro are 3, 5, 6, 9, 10.
+Arduino Pro Micro (ATmega32u4) notes:
+  PWM pins: 3, 5, 6, 9, 10.
+  INT-capable pins: 0, 1, 2, 3, 7.
+
+  Encoder Left:  clock=6 -> NOT INT-capable -> EncoderControl (polling fallback)
+  Encoder Right: clock=9 -> NOT INT-capable -> EncoderControl (polling fallback)
+  To add interrupt support, rewire clock pins to 0, 1, 2, 3, or 7.
 */
+
+// Board-selected encoder class aliases. Use these in sketches instead of naming
+// the class directly so the right implementation is chosen at compile time.
+#if defined(__AVR_ATmega32U4__)
+  template <class T> using EncoderLeftControl  = EncoderControl<T>;  // pin 6 not INT-capable
+  template <class T> using EncoderRightControl = EncoderControl<T>;  // pin 9 not INT-capable
+#else
+  template <class T> using EncoderLeftControl  = InterruptEncoderControl<T>;
+  template <class T> using EncoderRightControl = InterruptEncoderControl<T>;
+#endif
 
 struct {
   const LedConfig DefaultLed = { .pin = 17, .lowIsOn = true };

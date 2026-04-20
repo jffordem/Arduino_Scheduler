@@ -35,6 +35,10 @@ Arduino UNO R4 Minima (RA4M1) notes:
   All digital pins support attachInterrupt() — no dedicated INT pin constraints.
 */
 
+// R4 Minima: all pins are interrupt-capable, always use interrupt-driven encoders.
+template <class T> using EncoderLeftControl  = InterruptEncoderControl<T>;
+template <class T> using EncoderRightControl = InterruptEncoderControl<T>;
+
 struct {
   const LedConfig DefaultLed = { .pin = LED_BUILTIN, .lowIsOn = false };
   struct {

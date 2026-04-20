@@ -119,11 +119,28 @@ public:
 	EncoderControl(Schedule &schedule, int clockPin, int dataPin, T &value, int sensitivity, T maxVal) :
     	EncoderWheel(schedule, clockPin, dataPin, _encoderValue, abs(sensitivity)),
     	Mapper<int, T>(schedule, _encoderValue, value, -sensitivity, sensitivity, 0, maxVal) { }
+	// Slot parameter accepted but ignored — keeps API compatible with InterruptEncoderControl
+	// so board-specific using-aliases can substitute one for the other transparently.
+	EncoderControl(Schedule &schedule, const EncoderConfig &config, T &value, int sensitivity, T maxVal, int /*slot*/) :
+		EncoderControl(schedule, config, value, sensitivity, maxVal) { }
+	EncoderControl(Schedule &schedule, int clockPin, int dataPin, T &value, int sensitivity, T maxVal, int /*slot*/) :
+		EncoderControl(schedule, clockPin, dataPin, value, sensitivity, maxVal) { }
 	void plot(PlotComposite &plot, String name) {
 		EncoderWheel::plot(plot, name);
-		// PlotNum<int>::addToPlot(plot, name, ".value", _encoderValue);
 	}
 };
+
+// Compile-time validation that a literal pin number supports attachInterrupt.
+// Use this before declaring InterruptEncoderControl when wiring pins manually.
+// Example:  ENCODER_INTERRUPT_ASSERT(6);  // fails on ATmega32u4, passes on R4 Minima
+// Config-file using-aliases (EncoderLeftControl<T> etc.) already embed this check.
+#define ENCODER_INTERRUPT_ASSERT(clockPin) \
+    static_assert( \
+        digitalPinToInterrupt(clockPin) != NOT_AN_INTERRUPT, \
+        "Pin " #clockPin " is not interrupt-capable on this board. " \
+        "ATmega32u4 (Pro Micro/Leonardo) INT pins: 0, 1, 2, 3, 7. " \
+        "R4 Minima (RA4M1): all pins. " \
+        "Use EncoderControl<T> for polling fallback, or rewire to an INT pin.")
 
 // Two-slot interrupt-driven encoder support.
 // On R4 Minima (RA4M1) all digital pins support attachInterrupt — no rewiring needed.
