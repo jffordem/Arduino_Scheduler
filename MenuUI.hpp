@@ -1,3 +1,27 @@
+/*
+MIT License
+
+Copyright (c) 2022-2025 jffordem
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
 #ifndef MENU_UI_HPP
 #define MENU_UI_HPP
 
@@ -124,6 +148,7 @@ class MenuContext {
 	int _depth;
 	int _selected;
 	int _top;
+	int _visibleRows;
 
 	// Edit state
 	bool _editing;
@@ -144,7 +169,7 @@ class MenuContext {
 	long _stringShortDelay;
 	long _stringLongDelay;
 public:
-	MenuContext(const MenuScreen &root) : _depth(0), _selected(0), _top(0), _editing(false), _editValue(0), _editStep(1), _editLabel(0), _editKind(MenuItem_Action), _editOriginal(0), _enterValue(0), _enterStarted(false), _editString(0), _editStringMax(0), _editStringPos(0), _stringPendingKey(0), _stringPendingIndex(0), _stringLastPress(0), _stringShortDelay(750), _stringLongDelay(1500) {
+	MenuContext(const MenuScreen &root, int visibleRows = 3) : _depth(0), _selected(0), _top(0), _visibleRows(visibleRows), _editing(false), _editValue(0), _editStep(1), _editLabel(0), _editKind(MenuItem_Action), _editOriginal(0), _enterValue(0), _enterStarted(false), _editString(0), _editStringMax(0), _editStringPos(0), _stringPendingKey(0), _stringPendingIndex(0), _stringLastPress(0), _stringShortDelay(750), _stringLongDelay(1500) {
 		_stack[0] = &root;
 		_editStringOriginal[0] = 0;
 	}
@@ -203,8 +228,8 @@ public:
 		_selected += delta;
 		if (_selected < 0) _selected = 0;
 		if (_selected >= c) _selected = c - 1;
-		// Keep selected visible; assume 4-row display, title consumes row 0.
-		const int visible = 3;
+		// Keep selected visible; title consumes row 0.
+		const int visible = _visibleRows;
 		if (_selected < _top) _top = _selected;
 		if (_selected >= _top + visible) _top = _selected - visible + 1;
 		if (_top < 0) _top = 0;
@@ -530,20 +555,20 @@ public:
 			if (_ctx.editKind() == MenuItem_EnterLong) {
 				snprintf(line, sizeof(line), "Enter:%ld", _ctx.editValue());
 				buffer.write(1, 0, line, TCols);
-				buffer.write(2, 0, "0-9 type *=Del", TCols);
-				buffer.write(3, 0, "#=OK Back=Cancel", TCols);
+				if (TRows >= 4) buffer.write(TRows - 2, 0, "0-9 type *=Del", TCols);
+				if (TRows >= 3) buffer.write(TRows - 1, 0, "#=OK Back=Cancel", TCols);
 				return;
 			}
 			if (_ctx.editKind() == MenuItem_EnterString) {
 				buffer.write(1, 0, _ctx.editString(), TCols);
-				buffer.write(2, 0, "0-9 type *=Del", TCols);
-				buffer.write(3, 0, "#=OK Back=Cancel", TCols);
+				if (TRows >= 4) buffer.write(TRows - 2, 0, "0-9 type *=Del", TCols);
+				if (TRows >= 3) buffer.write(TRows - 1, 0, "#=OK Back=Cancel", TCols);
 				return;
 			}
 			snprintf(line, sizeof(line), "Value:%ld", _ctx.editValue());
 			buffer.write(1, 0, line, TCols);
-			buffer.write(2, 0, "Up/Down change", TCols);
-			buffer.write(3, 0, "Select=OK Back=Esc", TCols);
+			if (TRows >= 4) buffer.write(TRows - 2, 0, "Up/Down change", TCols);
+			if (TRows >= 3) buffer.write(TRows - 1, 0, "Select=OK Back=Esc", TCols);
 			return;
 		}
 

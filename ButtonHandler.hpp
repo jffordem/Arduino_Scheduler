@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2022 jffordem
+Copyright (c) 2022-2025 jffordem
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -52,20 +52,43 @@ struct ButtonConfig {
 		pin(pinValue), lowIsPressed(lowIsPressedValue) { }
 };
 
+// Suppresses output changes until the input has been stable for debounceMs.
+// Eliminates contact bounce on mechanical buttons without blocking poll().
+class DebounceFilter : private Scheduled {
+	const bool &_input;
+	bool &_output;
+	bool _candidate;
+	long _debounceMs;
+	Timer _timer;
+public:
+	DebounceFilter(Schedule &schedule, const bool &input, bool &output, long debounceMs = 10) :
+		Scheduled(schedule), _input(input), _output(output),
+		_candidate(false), _debounceMs(debounceMs), _timer(0) { }
+	void poll() override {
+		if (_input != _candidate) {
+			_candidate = _input;
+			_timer.reset(_debounceMs);
+		} else if (_timer.expired()) {
+			_output = _candidate;
+		}
+	}
+};
+
 /**
- * ButonValue reads a pushbutton and normalizes the signal such that regardless
- * of the hardware, the button's "value" is HIGH when pressed and LOW when released.
- * Use the input `pulledLowOnPress` to invert a hardware button if that's the case.
+ * ButtonValue reads a pushbutton, normalizes the signal so value is HIGH when
+ * pressed regardless of hardware wiring, then debounces it.
  */
-class ButtonValue : private DigitalRead, private Inverter {
+class ButtonValue : private DigitalRead, private Inverter, private DebounceFilter {
 	bool _rawValue;
+	bool _normalizedValue;
 public:
 	ButtonValue(Schedule &schedule, const ButtonConfig &config, bool &value) :
 		ButtonValue(schedule, config.pin, config.lowIsPressed, value) { }
 	ButtonValue(Schedule &schedule, int pin, bool pulledLowOnPress, bool &value) :
 		DigitalRead(schedule, pin, _rawValue, pinMode(pulledLowOnPress)),
-		Inverter(schedule, _rawValue, value, pulledLowOnPress),
-		_rawValue(pulledLowOnPress) { }
+		Inverter(schedule, _rawValue, _normalizedValue, pulledLowOnPress),
+		DebounceFilter(schedule, _normalizedValue, value),
+		_rawValue(pulledLowOnPress), _normalizedValue(false) { }
 private:
 	static int pinMode(bool pulledLowOnPress) {
 		if (pulledLowOnPress) return INPUT_PULLUP;

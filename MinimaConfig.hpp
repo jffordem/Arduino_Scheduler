@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2022 jffordem
+Copyright (c) 2022-2025 jffordem
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,16 +22,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef BREADBOARDCONFIG_HPP
-#define BREADBOARDCONFIG_HPP
+#ifndef MINIMACONFIG_HPP
+#define MINIMACONFIG_HPP
 
 #include <Led.hpp>
 #include <EncoderWheel.hpp>
 #include <ButtonHandler.hpp>
 
 /*
-Note: the PWM pins on the Pro Micro are 3, 5, 6, 9, 10.
+Arduino UNO R4 Minima (RA4M1) notes:
+  PWM pins: 3, 5, 6, 9, 10, 11
+  All digital pins support attachInterrupt() — no dedicated INT pin constraints.
 */
+
+// R4 Minima: all pins are interrupt-capable, always use interrupt-driven encoders.
+template <class T> using EncoderLeftControl  = InterruptEncoderControl<T>;
+template <class T> using EncoderRightControl = InterruptEncoderControl<T>;
 
 struct {
   const LedConfig DefaultLed = { .pin = LED_BUILTIN, .lowIsOn = false };
@@ -53,4 +59,4 @@ struct {
   } B; // Copy of Right
 } Config;
 
-#endif
+#endif // MINIMACONFIG_HPP

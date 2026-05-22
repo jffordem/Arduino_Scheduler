@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2022 jffordem
+Copyright (c) 2022-2025 jffordem
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -177,7 +177,7 @@ public:
 class PollGroup : public PollerComposite, public Scheduled, public Enabled {
 	bool _enabled;
 public:
-	PollGroup(Schedule &schedule) : Scheduled(schedule) { }
+	PollGroup(Schedule &schedule) : Scheduled(schedule), _enabled(true) { }
 	void enable(bool value) { _enabled = value; }
 	void toggle() { enable(!_enabled); }
 	bool enabled() const { return _enabled; }

@@ -22,20 +22,35 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include <Clock.hpp>
-#include <Led.hpp>
+#ifndef DIAGNOSTICS_HPP
+#define DIAGNOSTICS_HPP
 
-bool ledState = LOW;
-long ledDelay = 200;
+/*
+freeMemory() returns the number of bytes available between the stack and
+the heap. Call it from setup() or periodically to detect memory pressure
+from linked-list allocations or deep call chains.
 
-MainSchedule schedule;
-Clock clock(schedule, ledDelay, ledDelay, ledState);
-DigitalLED led(schedule, ledState, LED_BUILTIN);
+  Serial.print("Free RAM: ");
+  Serial.println(freeMemory());
 
-void setup() {
-    schedule.begin();
+Returns -1 on platforms where the measurement is not supported.
+*/
+
+#if defined(__AVR__)
+extern int __heap_start;
+extern int *__brkval;
+inline int freeMemory() {
+    int v;
+    return (int)&v - (__brkval == 0 ? (int)&__heap_start : (int)__brkval);
 }
-
-void loop() {
-    schedule.poll();
+#elif defined(__arm__)
+#include <malloc.h>
+inline int freeMemory() {
+    struct mallinfo mi = mallinfo();
+    return (int)mi.fordblks;
 }
+#else
+inline int freeMemory() { return -1; }
+#endif
+
+#endif // DIAGNOSTICS_HPP
