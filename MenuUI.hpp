@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef MENU_UI_HPP
-#define MENU_UI_HPP
+#pragma once
 
 #include <Scheduler.hpp>
 #include <Display.hpp>
@@ -607,5 +606,3 @@ public:
 		}
 	}
 };
-
-#endif // MENU_UI_HPP

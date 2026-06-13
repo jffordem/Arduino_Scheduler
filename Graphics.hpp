@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef GRAPHICS_HPP
-#define GRAPHICS_HPP
+#pragma once
 
 #include <Clock.hpp>
 #include <EdgeDetector.hpp>
@@ -102,5 +101,3 @@ public:
   void onRisingEdge() { update(); }
   void onFallingEdge() { }
 };
-
-#endif // GRAPHICS_HPP

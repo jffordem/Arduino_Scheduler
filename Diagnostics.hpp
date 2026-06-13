@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef DIAGNOSTICS_HPP
-#define DIAGNOSTICS_HPP
+#pragma once
 
 /*
 freeMemory() returns the number of bytes available between the stack and
@@ -52,5 +51,3 @@ inline int freeMemory() {
 #else
 inline int freeMemory() { return -1; }
 #endif
-
-#endif // DIAGNOSTICS_HPP

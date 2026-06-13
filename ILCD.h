@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef _ILCD_h
-#define _ILCD_h
+#pragma once
 
 /*
 MIT License
@@ -82,5 +81,3 @@ public:
     virtual uint8_t read() = 0;
     virtual void clear() = 0;
 };
-
-#endif // _ILCD_h

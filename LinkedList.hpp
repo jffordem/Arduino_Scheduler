@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef LINKEDLIST_HPP
-#define LINKEDLIST_HPP
+#pragma once
 
 template <class T>
 class Enumerable {
@@ -254,5 +253,3 @@ int sum3(List<int> &numbers) {
 }
 
 #endif // COMMENTED_OUT
-
-#endif // LINKEDLIST_HPP

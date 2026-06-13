@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef BUTTONHANDLER_HPP
-#define BUTTONHANDLER_HPP
+#pragma once
 
 #include <Scheduler.hpp>
 #include <EdgeDetector.hpp>
@@ -160,5 +159,3 @@ public:
 	void onRisingEdge() { tone(_pin, _frequency); }
 	void onFallingEdge() { noTone(_pin); }
 };
-
-#endif

@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef DISPLAY_HPP
-#define DISPLAY_HPP
+#pragma once
 
 #include <Scheduler.hpp>
 #include <Clock.hpp>
@@ -315,5 +314,3 @@ uint8_t space_1_b_right[8] = {
   0b01100,
 };
 */
-
-#endif // DISPLAY_HPP

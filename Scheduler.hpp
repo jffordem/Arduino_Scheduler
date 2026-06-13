@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef SCHEDULER_HPP
-#define SCHEDULER_HPP
+#pragma once
 
 /*
 MainSchedule provides a single pollable object for all pollers.
@@ -187,5 +186,3 @@ public:
 		}
 	}
 };
-
-#endif

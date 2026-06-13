@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef LK204_25_HPP
-#define LK204_25_HPP
+#pragma once
 
 #include <ILCD.h>
 
@@ -183,5 +182,3 @@ public:
         return Wire.read();
     }
 };
-
-#endif // LK204_25_HPP
