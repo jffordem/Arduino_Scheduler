@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef BREADBOARDCONFIG_HPP
-#define BREADBOARDCONFIG_HPP
+#pragma once
 
 #include <Led.hpp>
 #include <EncoderWheel.hpp>
@@ -68,5 +67,3 @@ struct {
     const EncoderConfig Encoder = { .clockPin = 9, .dataPin = 8 };
   } B; // Copy of Right
 } Config;
-
-#endif

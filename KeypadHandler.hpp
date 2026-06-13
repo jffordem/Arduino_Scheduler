@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef KEYPAD_HANDLER_HPP
-#define KEYPAD_HANDLER_HPP
+#pragma once
 
 /* Keypad key handler for LK204_25 keypad.
  * The keypad geometry is this.
@@ -126,5 +125,3 @@ public:
     _keyHandler.handle_key(ch);
   }
 };
-
-#endif // KEYPAD_HANDLER_HPP

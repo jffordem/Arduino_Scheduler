@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef ARDUINO_HPP
-#define ARDUINO_HPP
+#pragma once
 
 #include <stdint.h>
 #include <stddef.h>
@@ -185,5 +184,3 @@ public:
 };
 static const uint16_t SSD1306_WHITE = 0;
 #endif
-
-#endif // COMMENTEDOUT

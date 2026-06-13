@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef HIDIO_HPP
-#define HIDIO_HPP
+#pragma once
 
 #include <Scheduler.hpp>
 #include <Clock.hpp>
@@ -167,5 +166,3 @@ public:
 	void press() { _pressTimer.reset(_delay); }
 	void release() { _releaseTimer.reset(_delay); }
 };
-
-#endif

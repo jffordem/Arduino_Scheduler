@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef EDGEDETECTOR_HPP
-#define EDGEDETECTOR_HPP
+#pragma once
 
 #include <Scheduler.hpp>
 #include <Clock.hpp>
@@ -148,5 +147,3 @@ public:
 	}
 	void reset() { _counter.reset(); }
 };
-
-#endif

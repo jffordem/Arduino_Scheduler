@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef PERSISTENT_HPP
-#define PERSISTENT_HPP
+#pragma once
 
 #include <EEPROM.h>
 #include <Scheduler.hpp>
@@ -101,5 +100,3 @@ public:
         }
     }
 };
-
-#endif // PERSISTENT_HPP

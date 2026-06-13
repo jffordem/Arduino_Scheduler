@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef PADDLE_HPP
-#define PADDLE_HPP
+#pragma once
 
 #include <Graphics.hpp>
 #include <EncoderWheel.hpp>
@@ -45,5 +44,3 @@ public:
   int16_t y0() const { return _y - (_size >> 1); }
   int16_t y1() const { return _y + (_size >> 1); }
 };
-
-#endif

@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef CLOCK_HPP
-#define CLOCK_HPP
+#pragma once
 
 #include <Scheduler.hpp>
 
@@ -154,5 +153,3 @@ public:
 		}
 	}
 };
-
-#endif

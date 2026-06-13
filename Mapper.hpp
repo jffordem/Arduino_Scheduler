@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef MAPPER_HPP
-#define MAPPER_HPP
+#pragma once
 
 #include <Scheduler.hpp>
 
@@ -119,5 +118,3 @@ public:
 		_output = constrain(_input, _min, _max);
 	}
 };
-
-#endif

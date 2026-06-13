@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef LEONARDOCONFIG_HPP
-#define LEONARDOCONFIG_HPP
+#pragma once
 
 #include <Led.hpp>
 #include <EncoderWheel.hpp>
@@ -60,5 +59,3 @@ struct {
     const EncoderConfig Encoder = { .clockPin = 10, .dataPin = 9 };
   } A;
 } Config;
-
-#endif

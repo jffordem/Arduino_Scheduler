@@ -22,8 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef LED_HPP
-#define LED_HPP
+#pragma once
 
 #include <Scheduler.hpp>
 #include <PinIO.hpp>
@@ -98,5 +97,3 @@ public:
 		AnalogRead<Tin>(schedule, pin, _rawValue),
 		Mapper<Tin, Tout>(schedule, _rawValue, value, minVal, maxVal) { }
 };
-
-#endif
