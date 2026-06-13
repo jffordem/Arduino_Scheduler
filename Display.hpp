@@ -79,9 +79,9 @@ public:
 		Composite<DisplayDrawable<TDisplay, TRows, TCols>>(first, rest...) { }
 #endif
   void draw(DisplayBuffer<TRows, TCols> &buffer) {
-    const int count = length();
+    const int count = this->length();
 		for (int i = 0; i < count; i++) {
-			item(i)->draw(buffer);
+			this->item(i)->draw(buffer);
 		}
 	}
 };

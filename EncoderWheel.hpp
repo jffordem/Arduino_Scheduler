@@ -136,7 +136,7 @@ public:
 // Config-file using-aliases (EncoderLeftControl<T> etc.) already embed this check.
 #define ENCODER_INTERRUPT_ASSERT(clockPin) \
     static_assert( \
-        digitalPinToInterrupt(clockPin) != NOT_AN_INTERRUPT, \
+        digitalPinToInterrupt(clockPin) != -1, \
         "Pin " #clockPin " is not interrupt-capable on this board. " \
         "ATmega32u4 (Pro Micro/Leonardo) INT pins: 0, 1, 2, 3, 7. " \
         "R4 Minima (RA4M1): all pins. " \
@@ -156,7 +156,13 @@ public:
 namespace _EncoderISR {
     volatile int _delta[2];
     int _dataPin[2];
-    inline void tick(int s) { _delta[s] += digitalRead(_dataPin[s]) ? +1 : -1; }
+    inline void tick(int s) {
+        _delta[s] += digitalRead(_dataPin[s]) ? +1 : -1;
+        Serial.print("ISR slot ");
+        Serial.print(s);
+        Serial.print(" tick, delta now ");
+        Serial.println(_delta[s]);
+    }
     void isr0() { tick(0); }
     void isr1() { tick(1); }
 }
@@ -176,9 +182,23 @@ public:
         _EncoderISR::_delta[s] = 0;
         pinMode(clockPin, INPUT_PULLUP);
         pinMode(dataPin, INPUT_PULLUP);
-        attachInterrupt(digitalPinToInterrupt(clockPin),
-                        s == 0 ? _EncoderISR::isr0 : _EncoderISR::isr1,
-                        RISING);
+        int interruptPin = digitalPinToInterrupt(clockPin);
+        Serial.print("Setting up encoder slot ");
+        Serial.print(s);
+        Serial.print(" on clock pin ");
+        Serial.print(clockPin);
+        Serial.print(" (interrupt ");
+        Serial.print(interruptPin);
+        Serial.print("), data pin ");
+        Serial.println(dataPin);
+        if (interruptPin != -1) {
+            attachInterrupt(interruptPin,
+                            s == 0 ? _EncoderISR::isr0 : _EncoderISR::isr1,
+                            RISING);
+            Serial.println("Interrupt attached successfully");
+        } else {
+            Serial.println("ERROR: Pin not interrupt-capable!");
+        }
     }
     void poll() override {
         int d;
@@ -187,7 +207,17 @@ public:
         _delta = 0;
         interrupts();
         if (d != 0) {
+            int oldValue = _value;
             _value = constrain(_value + d, 0, _limit);
+            int slot = (&_delta - _EncoderISR::_delta) / sizeof(int);
+            Serial.print("Encoder slot ");
+            Serial.print(slot);
+            Serial.print(" polled: delta=");
+            Serial.print(d);
+            Serial.print(", value ");
+            Serial.print(oldValue);
+            Serial.print(" -> ");
+            Serial.println(_value);
         }
     }
 };
