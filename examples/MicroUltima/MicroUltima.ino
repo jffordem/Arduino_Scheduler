@@ -368,7 +368,7 @@ public:
         }
 
         case UltimaGame::COMBAT: {
-            const UltimaGame::Enemy &e = _g.enemies[_g.fightIdx];
+            const Enemy &e = _g.enemies[_g.fightIdx];
             const EnemyType &et = ETYPES[e.type];
             char r0[21], r1[21], r2[21], r3[21];
             snprintf(r0, sizeof(r0), "** %-14.14s **", et.name);
