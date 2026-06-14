@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESP32 Clicker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      background: #1a1a1a;
+      color: #e0e0e0;
+      font: 16px system-ui, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      width: min(440px, 100vw - 2rem);
+      padding: 1.5rem;
+      background: #242424;
+      border-radius: 12px;
+    }
+    h1 { font-size: 1.4rem; margin: 0 0 1.4rem; text-align: center; }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 1rem 0;
+      gap: 0.75rem;
+    }
+    .row label { font-size: 0.95rem; color: #aaa; white-space: nowrap; flex-shrink: 0; }
+
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.8rem;
+      border-radius: 99px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .badge.running { background: #1b5e20; color: #a5d6a7; }
+    .badge.stopped { background: #3a1a1a; color: #ef9a9a; }
+
+    select, input[type="text"] {
+      background: #333;
+      color: #e0e0e0;
+      border: 1px solid #555;
+      border-radius: 6px;
+      padding: 0.5rem 0.6rem;
+      font-size: 1rem;
+    }
+    select { flex: 1; }
+    input[type="text"] {
+      width: 3.5rem;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      min-width: 0;
+      accent-color: #4caf50;
+    }
+    .slider-val {
+      min-width: 5rem;
+      text-align: right;
+      font-size: 0.9rem;
+      color: #ccc;
+      flex-shrink: 0;
+    }
+
+    #toggle-btn {
+      display: block;
+      width: 100%;
+      padding: 1.1rem;
+      margin-top: 1.5rem;
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    #toggle-btn.start { background: #2e7d32; color: #fff; }
+    #toggle-btn.stop  { background: #b71c1c; color: #fff; }
+    #toggle-btn:active { opacity: 0.75; }
+
+    #ws-status { font-size: 0.8rem; text-align: center; margin-top: 1.1rem; color: #555; }
+    .ok  { color: #4caf50 !important; }
+    .err { color: #f44336 !important; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>ESP32 Clicker</h1>
+
+    <div class="row">
+      <label>Mode</label>
+      <span id="mode-name" style="font-weight:600">—</span>
+    </div>
+
+    <div class="row">
+      <label>Status</label>
+      <span id="status-badge" class="badge stopped">Stopped</span>
+    </div>
+
+    <div class="row">
+      <label for="input-select">Input</label>
+      <select id="input-select">
+        <option value="left">Left Mouse</option>
+        <option value="right">Right Mouse</option>
+        <option value="middle">Middle Mouse</option>
+        <option value="key">Key…</option>
+      </select>
+      <input id="key-char" type="text" maxlength="1" value="r"
+             autocomplete="off" autocorrect="off" spellcheck="false"
+             style="display:none">
+    </div>
+
+    <div class="row">
+      <label for="hold-slider">Hold</label>
+      <input id="hold-slider" type="range" min="50" max="3000" step="50" value="1200">
+      <span id="hold-val" class="slider-val">1200 ms</span>
+    </div>
+
+    <div class="row">
+      <label for="wait-slider">Wait</label>
+      <input id="wait-slider" type="range" min="100" max="5000" step="100" value="800">
+      <span id="wait-val" class="slider-val">800 ms</span>
+    </div>
+
+    <button id="toggle-btn" class="start">START</button>
+
+    <div id="ws-status">Connecting…</div>
+  </div>
+
+  <script>
+    const modeName    = document.getElementById('mode-name');
+    const statusBadge = document.getElementById('status-badge');
+    const inputSelect = document.getElementById('input-select');
+    const keyChar     = document.getElementById('key-char');
+    const holdSlider  = document.getElementById('hold-slider');
+    const holdVal     = document.getElementById('hold-val');
+    const waitSlider  = document.getElementById('wait-slider');
+    const waitVal     = document.getElementById('wait-val');
+    const toggleBtn   = document.getElementById('toggle-btn');
+    const wsStatusEl  = document.getElementById('ws-status');
+
+    let ws, running = false;
+
+    function send(obj) {
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+    }
+
+    function setInputValue(input) {
+      const isKey = input !== 'left' && input !== 'right' && input !== 'middle';
+      if (isKey) {
+        inputSelect.value  = 'key';
+        keyChar.value      = input;
+        keyChar.style.display = '';
+      } else {
+        inputSelect.value  = input;
+        keyChar.style.display = 'none';
+      }
+    }
+
+    function applyStatus(s) {
+      running = !!s.running;
+      modeName.textContent    = s.mode || '—';
+      setInputValue(s.input  || 'left');
+      holdSlider.value        = s.holdMs ?? 1200;
+      holdVal.textContent     = (s.holdMs ?? 1200) + ' ms';
+      waitSlider.value        = s.waitMs ?? 800;
+      waitVal.textContent     = (s.waitMs ?? 800) + ' ms';
+      statusBadge.textContent = running ? 'Running' : 'Stopped';
+      statusBadge.className   = 'badge ' + (running ? 'running' : 'stopped');
+      toggleBtn.textContent   = running ? 'STOP' : 'START';
+      toggleBtn.className     = running ? 'stop' : 'start';
+    }
+
+    function connect() {
+      ws = new WebSocket('ws://' + location.host + '/ws');
+      ws.onopen  = () => {
+        wsStatusEl.textContent = 'Connected';
+        wsStatusEl.className = 'ok';
+        send({ cmd: 'getStatus' });
+      };
+      ws.onmessage = (e) => { try { applyStatus(JSON.parse(e.data)); } catch (_) {} };
+      ws.onclose   = () => {
+        wsStatusEl.textContent = 'Reconnecting…';
+        wsStatusEl.className = 'err';
+        setTimeout(connect, 2000);
+      };
+    }
+
+    let debounce;
+    function sendParam(key, value) {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => send({ cmd: 'setParam', key, value }), 200);
+    }
+
+    inputSelect.addEventListener('change', () => {
+      const v = inputSelect.value;
+      if (v === 'key') {
+        keyChar.style.display = '';
+        keyChar.focus();
+        if (keyChar.value.length === 1) sendParam('input', keyChar.value);
+      } else {
+        keyChar.style.display = 'none';
+        sendParam('input', v);
+      }
+    });
+
+    keyChar.addEventListener('input', () => {
+      if (keyChar.value.length === 1) sendParam('input', keyChar.value);
+    });
+
+    holdSlider.addEventListener('input', () => {
+      const v = parseInt(holdSlider.value);
+      holdVal.textContent = v + ' ms';
+      sendParam('holdMs', v);
+    });
+
+    waitSlider.addEventListener('input', () => {
+      const v = parseInt(waitSlider.value);
+      waitVal.textContent = v + ' ms';
+      sendParam('waitMs', v);
+    });
+
+    toggleBtn.addEventListener('click', () => {
+      send({ cmd: running ? 'stop' : 'start' });
+    });
+
+    connect();
+  </script>
+</body>
+</html>
