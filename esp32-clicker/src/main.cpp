@@ -33,6 +33,7 @@ static void applyCommand(const ClickerCmd& cmd) {
 
         case ClickerCmd::SET_MODE: {
             ClickerMode* next = findMode(cmd.paramVal);
+            Serial.printf("[CMD] SET_MODE \"%s\" -> %s\n", cmd.paramVal, next ? "found" : "NOT FOUND");
             if (!next || next == activeMode) break;
             if (activeMode && activeMode->running()) activeMode->stop();
             HID::releaseAll();
@@ -43,10 +44,16 @@ static void applyCommand(const ClickerCmd& cmd) {
         }
 
         case ClickerCmd::START:
+            Serial.printf("[CMD] START (activeMode=%s, running=%s)\n",
+                activeMode ? activeMode->name() : "null",
+                (activeMode && activeMode->running()) ? "yes" : "no");
             if (activeMode && !activeMode->running()) activeMode->start();
             break;
 
         case ClickerCmd::STOP:
+            Serial.printf("[CMD] STOP (activeMode=%s, running=%s)\n",
+                activeMode ? activeMode->name() : "null",
+                (activeMode && activeMode->running()) ? "yes" : "no");
             if (activeMode && activeMode->running()) {
                 activeMode->stop();
                 HID::releaseAll();
@@ -54,6 +61,7 @@ static void applyCommand(const ClickerCmd& cmd) {
             break;
 
         case ClickerCmd::SET_PARAM:
+            Serial.printf("[CMD] SET_PARAM \"%s\"=\"%s\"\n", cmd.paramKey, cmd.paramVal);
             if (activeMode) {
                 activeMode->setParam(cmd.paramKey, cmd.paramVal);
                 webui_push(activeMode->statusJson());

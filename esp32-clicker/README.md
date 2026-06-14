@@ -227,22 +227,57 @@ credentials; they're saved to NVS and used on all future boots.
 
 ---
 
-## USB / HID Development Note
+## Flashing & Development
 
-The ESP32-S3 cannot simultaneously present as USB-Serial (for flashing) and
-USB-HID. `Config.h` has a flag:
+### Hardware — two USB ports
 
-```cpp
-// Comment out for development (USB-Serial enabled, HID disabled)
-// Uncomment for deployment (HID enabled, USB-Serial disabled)
-#define USB_HID_MODE
+The ESP32-S3-DevKitC-1 has two USB connectors that serve different purposes:
+
+| Port | Chip | Windows device | Purpose |
+|---|---|---|---|
+| Micro-USB | CH343 UART bridge | COM5 (or similar) | Serial monitor + programming |
+| USB-C | Native ESP32-S3 USB | COM6 in dev / HID device in hid | HID output to gaming PC |
+
+**Serial output always comes through COM5** (UART0 via CH343), regardless of
+which build is running. Keep the serial monitor pointed there.
+
+### Two build environments (platformio.ini)
+
+| Environment | What it does | How to flash |
+|---|---|---|
+| `dev` (default) | HID disabled, USB CDC on native port | `flash.bat` or PlatformIO Upload button |
+| `hid` | TinyUSB HID active, CDC disabled | `flash-hid.bat` (see below) |
+
+When `USB_HID_MODE` is not defined (dev build), the sketch runs the full web
+server and state machine but replaces every HID call with a `Serial.printf` —
+useful for iterating on logic and the UI without reflashing in HID mode.
+
+### Flashing scripts
+
+```
+flash.bat          # dev build — code only
+flash.bat fs       # dev build — filesystem only
+flash.bat all      # dev build — code then filesystem
+
+flash-hid.bat      # hid build — code only
+flash-hid.bat fs   # hid build — filesystem only
+flash-hid.bat all  # hid build — code then filesystem (prompts between steps)
 ```
 
-When `USB_HID_MODE` is not defined, the sketch still runs the web server and
-state machine but skips all HID calls — useful for iterating on the UI without
-reflashing in HID mode each time.
+Both scripts use `pio run -t upload` (not bare `pio run`, which only compiles).
 
-To reflash an ESP32-S3 in HID mode: hold BOOT, tap RESET, release BOOT.
+### Flashing the hid build
+
+`flash-hid.bat` uploads via COM5 using esptool. If the board's auto-download
+circuit triggers automatically, no button press is needed. If esptool times out
+with a connection error, do the manual dance first:
+
+1. Hold **BOOT**, tap **RESET**, release **BOOT**
+2. Immediately run `flash-hid.bat`
+
+After a successful hid flash, COM6 changes from a CDC serial port to a HID
+device. Windows may take a few seconds to recognize the new HID mouse/keyboard.
+Press **RST** once if the device doesn't reboot automatically after flashing.
 
 ---
 
