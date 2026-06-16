@@ -7,10 +7,12 @@
 #include "ClickerMode.h"
 #include "WebUI.h"
 #include "AutoCast.h"
+#include "Hold.h"
 
 static AutoCast      autoCastMode;
-static ClickerMode*  modes[]   = { &autoCastMode };
-static int           modeCount = 1;
+static Hold          holdMode;
+static ClickerMode*  modes[]   = { &autoCastMode, &holdMode };
+static int           modeCount = 2;
 
 QueueHandle_t  cmdQueue;
 static ClickerMode* activeMode  = nullptr;
