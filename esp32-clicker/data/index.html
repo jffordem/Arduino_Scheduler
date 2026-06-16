@@ -98,8 +98,11 @@
     <h1>ESP32 Clicker</h1>
 
     <div class="row">
-      <label>Mode</label>
-      <span id="mode-name" style="font-weight:600">—</span>
+      <label for="mode-select">Mode</label>
+      <select id="mode-select">
+        <option value="AutoCast">AutoCast</option>
+        <option value="Hold">Hold</option>
+      </select>
     </div>
 
     <div class="row">
@@ -120,16 +123,18 @@
              style="display:none">
     </div>
 
-    <div class="row">
-      <label for="hold-slider">Hold</label>
-      <input id="hold-slider" type="range" min="50" max="3000" step="50" value="1200">
-      <span id="hold-val" class="slider-val">1200 ms</span>
-    </div>
+    <div id="autocast-params">
+      <div class="row">
+        <label for="hold-slider">Hold</label>
+        <input id="hold-slider" type="range" min="50" max="3000" step="50" value="1200">
+        <span id="hold-val" class="slider-val">1200 ms</span>
+      </div>
 
-    <div class="row">
-      <label for="wait-slider">Wait</label>
-      <input id="wait-slider" type="range" min="100" max="5000" step="100" value="800">
-      <span id="wait-val" class="slider-val">800 ms</span>
+      <div class="row">
+        <label for="wait-slider">Wait</label>
+        <input id="wait-slider" type="range" min="100" max="5000" step="100" value="800">
+        <span id="wait-val" class="slider-val">800 ms</span>
+      </div>
     </div>
 
     <button id="toggle-btn" class="start">START</button>
@@ -138,16 +143,17 @@
   </div>
 
   <script>
-    const modeName    = document.getElementById('mode-name');
-    const statusBadge = document.getElementById('status-badge');
-    const inputSelect = document.getElementById('input-select');
-    const keyChar     = document.getElementById('key-char');
-    const holdSlider  = document.getElementById('hold-slider');
-    const holdVal     = document.getElementById('hold-val');
-    const waitSlider  = document.getElementById('wait-slider');
-    const waitVal     = document.getElementById('wait-val');
-    const toggleBtn   = document.getElementById('toggle-btn');
-    const wsStatusEl  = document.getElementById('ws-status');
+    const modeSelect   = document.getElementById('mode-select');
+    const statusBadge  = document.getElementById('status-badge');
+    const inputSelect  = document.getElementById('input-select');
+    const keyChar      = document.getElementById('key-char');
+    const acParams     = document.getElementById('autocast-params');
+    const holdSlider   = document.getElementById('hold-slider');
+    const holdVal      = document.getElementById('hold-val');
+    const waitSlider   = document.getElementById('wait-slider');
+    const waitVal      = document.getElementById('wait-val');
+    const toggleBtn    = document.getElementById('toggle-btn');
+    const wsStatusEl   = document.getElementById('ws-status');
 
     let ws, running = false;
 
@@ -158,23 +164,30 @@
     function setInputValue(input) {
       const isKey = input !== 'left' && input !== 'right' && input !== 'middle';
       if (isKey) {
-        inputSelect.value  = 'key';
-        keyChar.value      = input;
+        inputSelect.value     = 'key';
+        keyChar.value         = input;
         keyChar.style.display = '';
       } else {
-        inputSelect.value  = input;
+        inputSelect.value     = input;
         keyChar.style.display = 'none';
       }
     }
 
     function applyStatus(s) {
       running = !!s.running;
-      modeName.textContent    = s.mode || '—';
-      setInputValue(s.input  || 'left');
-      holdSlider.value        = s.holdMs ?? 1200;
-      holdVal.textContent     = (s.holdMs ?? 1200) + ' ms';
-      waitSlider.value        = s.waitMs ?? 800;
-      waitVal.textContent     = (s.waitMs ?? 800) + ' ms';
+
+      modeSelect.value = s.mode || 'AutoCast';
+      acParams.style.display = (s.mode === 'Hold') ? 'none' : '';
+
+      setInputValue(s.input || 'left');
+
+      if (s.mode === 'AutoCast') {
+        holdSlider.value    = s.holdMs ?? 1200;
+        holdVal.textContent = (s.holdMs ?? 1200) + ' ms';
+        waitSlider.value    = s.waitMs ?? 800;
+        waitVal.textContent = (s.waitMs ?? 800) + ' ms';
+      }
+
       statusBadge.textContent = running ? 'Running' : 'Stopped';
       statusBadge.className   = 'badge ' + (running ? 'running' : 'stopped');
       toggleBtn.textContent   = running ? 'STOP' : 'START';
@@ -183,15 +196,15 @@
 
     function connect() {
       ws = new WebSocket('ws://' + location.host + '/ws');
-      ws.onopen  = () => {
+      ws.onopen    = () => {
         wsStatusEl.textContent = 'Connected';
-        wsStatusEl.className = 'ok';
+        wsStatusEl.className   = 'ok';
         send({ cmd: 'getStatus' });
       };
       ws.onmessage = (e) => { try { applyStatus(JSON.parse(e.data)); } catch (_) {} };
       ws.onclose   = () => {
         wsStatusEl.textContent = 'Reconnecting…';
-        wsStatusEl.className = 'err';
+        wsStatusEl.className   = 'err';
         setTimeout(connect, 2000);
       };
     }
@@ -201,6 +214,10 @@
       clearTimeout(debounce);
       debounce = setTimeout(() => send({ cmd: 'setParam', key, value }), 200);
     }
+
+    modeSelect.addEventListener('change', () => {
+      send({ cmd: 'setMode', mode: modeSelect.value });
+    });
 
     inputSelect.addEventListener('change', () => {
       const v = inputSelect.value;
