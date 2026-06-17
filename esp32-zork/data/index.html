@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zork</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: #0a0a0a;
+      color: #33ff33;
+      font: 15px/1.5 'Courier New', Courier, monospace;
+    }
+    body { display: flex; flex-direction: column; }
+
+    #output {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    #ws-status {
+      font-size: 0.7rem;
+      text-align: right;
+      padding: 0.15rem 0.6rem;
+      background: #0a0a0a;
+      color: #1a4d1a;
+    }
+    #ws-status.connected { color: #1a7a1a; }
+    #ws-status.error     { color: #7a1a1a; }
+
+    #input-row {
+      display: flex;
+      align-items: center;
+      border-top: 1px solid #1a3a1a;
+      background: #0f0f0f;
+      padding: 0.4rem 0.75rem;
+      gap: 0.5rem;
+    }
+    #prompt { color: #33ff33; user-select: none; }
+    #input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #33ff33;
+      font: inherit;
+      caret-color: #33ff33;
+      min-height: 2.2rem;
+      padding: 0.3rem 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="output"></div>
+  <div id="ws-status">Connecting…</div>
+  <div id="input-row">
+    <span id="prompt">&gt;</span>
+    <input id="input" type="text"
+           autocomplete="off" autocorrect="off"
+           autocapitalize="none" spellcheck="false" autofocus>
+  </div>
+
+  <script>
+    const output   = document.getElementById('output');
+    const input    = document.getElementById('input');
+    const wsStatus = document.getElementById('ws-status');
+    let ws;
+
+    function print(text) {
+      output.textContent += text;
+      output.scrollTop = output.scrollHeight;
+    }
+
+    function connect() {
+      ws = new WebSocket('ws://' + location.host + '/ws');
+
+      ws.onopen = () => {
+        wsStatus.textContent = 'Connected';
+        wsStatus.className = 'connected';
+        input.focus();
+      };
+      ws.onmessage = (e) => print(e.data);
+      ws.onclose = () => {
+        wsStatus.textContent = 'Reconnecting…';
+        wsStatus.className = 'error';
+        setTimeout(connect, 2000);
+      };
+      ws.onerror = () => {
+        wsStatus.textContent = 'Error';
+        wsStatus.className = 'error';
+      };
+    }
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      const line = input.value.trim();
+      if (!line) return;
+      print(line + '\n');
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send(line);
+      input.value = '';
+    });
+
+    // Re-focus input on any tap so phone keyboard stays up.
+    document.addEventListener('click', () => input.focus());
+
+    connect();
+  </script>
+</body>
+</html>

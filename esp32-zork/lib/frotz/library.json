@@ -1,0 +1,13 @@
+{
+  "name": "frotz",
+  "version": "0.0.1",
+  "description": "frotz Z-machine interpreter core (ESP32 port)",
+  "build": {
+    "srcFilter": [
+      "+<*.cpp>",
+      "+<common/*.c>",
+      "-<common/main.c>",
+      "-<common/getopt.c>"
+    ]
+  }
+}
