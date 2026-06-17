@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESP32 Morse Trainer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      background: #1a1a1a; color: #e0e0e0;
+      font: 16px system-ui, sans-serif;
+      margin: 0; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .card {
+      width: min(440px, 100vw - 2rem);
+      padding: 1.5rem;
+      background: #242424;
+      border-radius: 12px;
+    }
+    h1 { font-size: 1.4rem; margin: 0 0 0.3rem; text-align: center; }
+    .subtitle { text-align: center; color: #666; font-size: 0.85rem; margin: 0 0 1.4rem; }
+
+    .row {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      margin: 0.75rem 0; gap: 0.75rem;
+    }
+    .row label { font-size: 0.9rem; color: #aaa; white-space: nowrap; flex-shrink: 0; min-width: 6rem; }
+    input[type="range"] { flex: 1; min-width: 0; accent-color: #4caf50; }
+    .slider-val { min-width: 4.5rem; text-align: right; font-size: 0.85rem; color: #ccc; flex-shrink: 0; }
+
+    .koch-chars {
+      font-family: monospace; font-size: 0.85rem; color: #4caf50;
+      letter-spacing: 0.12em; text-align: center;
+      margin: 0.15rem 0 0.8rem; word-break: break-all;
+    }
+
+    .check-row { display: flex; align-items: center; gap: 0.5rem; margin: 0.4rem 0; font-size: 0.85rem; color: #666; }
+    .check-row input { accent-color: #4caf50; cursor: pointer; }
+    .check-row label { cursor: pointer; }
+
+    .score {
+      text-align: center; font-size: 1.05rem; font-weight: 600;
+      color: #ccc; margin: 1rem 0 0.4rem;
+    }
+    .score.hidden { display: none; }
+
+    #copy-section { margin: 0.8rem 0; }
+    #copy-section.hidden { display: none; }
+    #copy-input {
+      display: block; width: 100%;
+      padding: 0.9rem; font-size: 2.5rem; font-weight: 700;
+      text-align: center; text-transform: uppercase;
+      background: #333; color: #e0e0e0;
+      border: 2px solid #555; border-radius: 8px;
+      letter-spacing: 0.15em;
+    }
+    #copy-input:focus { outline: none; border-color: #4caf50; }
+    .hint { text-align: center; color: #555; font-size: 0.8rem; margin: 0.3rem 0 0; }
+
+    #result { text-align: center; padding: 0.8rem 0; }
+    #result.hidden { display: none; }
+    #result-char { display: block; font-size: 4.5rem; font-weight: 700; line-height: 1; }
+    #result-label { display: block; font-size: 1rem; margin-top: 0.4rem; }
+
+    #toggle-btn {
+      display: block; width: 100%;
+      padding: 1.1rem; margin-top: 1.2rem;
+      font-size: 1.25rem; font-weight: 700; letter-spacing: 0.05em;
+      border: none; border-radius: 10px; cursor: pointer;
+      transition: background 0.15s;
+    }
+    #toggle-btn.start { background: #2e7d32; color: #fff; }
+    #toggle-btn.stop  { background: #b71c1c; color: #fff; }
+    #toggle-btn:active { opacity: 0.75; }
+
+    #ws-status { font-size: 0.8rem; text-align: center; margin-top: 1rem; color: #555; }
+    .ok  { color: #4caf50 !important; }
+    .err { color: #f44336 !important; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>ESP32 Morse Trainer</h1>
+    <p class="subtitle">KG7FVO — Koch trainer</p>
+
+    <div id="setup">
+      <div class="row">
+        <label for="koch-slider">Koch Level</label>
+        <input id="koch-slider" type="range" min="2" max="40" step="1" value="2">
+        <span id="koch-level-val" class="slider-val">2</span>
+      </div>
+      <div id="koch-chars" class="koch-chars">K M</div>
+
+      <div class="row">
+        <label for="char-wpm">Char WPM</label>
+        <input id="char-wpm" type="range" min="5" max="40" step="1" value="20">
+        <span id="char-wpm-val" class="slider-val">20 WPM</span>
+      </div>
+
+      <div class="row">
+        <label for="eff-wpm">Eff. WPM</label>
+        <input id="eff-wpm" type="range" min="5" max="40" step="1" value="10">
+        <span id="eff-wpm-val" class="slider-val">10 WPM</span>
+      </div>
+
+      <div class="check-row">
+        <input type="checkbox" id="timing-log">
+        <label for="timing-log">Timing log (Serial)</label>
+      </div>
+    </div>
+
+    <div id="score" class="score hidden">0 / 0</div>
+
+    <div id="copy-section" class="hidden">
+      <input id="copy-input" type="text" maxlength="1"
+             autocomplete="off" autocorrect="off" autocapitalize="characters"
+             spellcheck="false" inputmode="text" placeholder="?">
+      <p class="hint">Type the character you hear</p>
+    </div>
+
+    <div id="result" class="hidden">
+      <span id="result-char"></span>
+      <span id="result-label"></span>
+    </div>
+
+    <button id="toggle-btn" class="start">START</button>
+    <div id="ws-status">Connecting…</div>
+  </div>
+
+  <script>
+    // Must mirror KochTrainer::kochOrder() in KochTrainer.h exactly.
+    const KOCH_ORDER = "KMRSUAPTLOWI.NJEF0YV,G5/Q9ZH38B?427C1D6X";
+
+    const kochSlider    = document.getElementById('koch-slider');
+    const kochLevelVal  = document.getElementById('koch-level-val');
+    const kochCharsEl   = document.getElementById('koch-chars');
+    const charWpmSlider = document.getElementById('char-wpm');
+    const charWpmVal    = document.getElementById('char-wpm-val');
+    const effWpmSlider  = document.getElementById('eff-wpm');
+    const effWpmVal     = document.getElementById('eff-wpm-val');
+    const timingLog     = document.getElementById('timing-log');
+    const scoreEl       = document.getElementById('score');
+    const copySection   = document.getElementById('copy-section');
+    const copyInput     = document.getElementById('copy-input');
+    const resultEl      = document.getElementById('result');
+    const resultChar    = document.getElementById('result-char');
+    const resultLabel   = document.getElementById('result-label');
+    const toggleBtn     = document.getElementById('toggle-btn');
+    const wsStatusEl    = document.getElementById('ws-status');
+
+    let ws, running = false, revealed = false;
+
+    function send(obj) {
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+    }
+    function sendParam(key, value) { send({ cmd: 'setParam', key, value }); }
+
+    function updateKochDisplay(level) {
+      kochLevelVal.textContent = level;
+      kochCharsEl.textContent  = KOCH_ORDER.slice(0, level).split('').join(' ');
+    }
+
+    function applyStatus(s) {
+      const wasRunning  = running;
+      const wasRevealed = revealed;
+      running  = !!s.running;
+      revealed = !!s.revealed;
+
+      if (s.kochLevel    !== undefined) { kochSlider.value = s.kochLevel; updateKochDisplay(s.kochLevel); }
+      if (s.charWpm      !== undefined) { charWpmSlider.value = s.charWpm; charWpmVal.textContent = s.charWpm + ' WPM'; }
+      if (s.effectiveWpm !== undefined) { effWpmSlider.value  = s.effectiveWpm; effWpmVal.textContent = s.effectiveWpm + ' WPM'; }
+
+      // Score
+      scoreEl.classList.toggle('hidden', !running);
+      if (running) scoreEl.textContent = s.total > 0 ? (s.correct + ' / ' + s.total + '  (' + s.pct + '%)') : '0 / 0';
+
+      // Copy / result sections
+      if (!running) {
+        copySection.classList.add('hidden');
+        resultEl.classList.add('hidden');
+      } else if (revealed) {
+        copySection.classList.add('hidden');
+        resultChar.textContent = s.lastSent || '?';
+        const correct = !!s.lastCorrect;
+        resultChar.style.color  = correct ? '#4caf50' : '#f44336';
+        resultLabel.style.color = correct ? '#4caf50' : '#f44336';
+        resultLabel.textContent = correct
+          ? '✓ Correct'
+          : '✗ Wrong' + (s.lastAnswer ? ' — you sent: ' + s.lastAnswer : ' — no answer');
+        resultEl.classList.remove('hidden');
+      } else {
+        // running, not revealed = copy window
+        resultEl.classList.add('hidden');
+        copySection.classList.remove('hidden');
+      }
+
+      // Focus copy input whenever we enter a new copy window
+      if (running && !revealed && (!wasRunning || wasRevealed)) {
+        copyInput.value = '';
+        copyInput.focus();
+      }
+
+      toggleBtn.textContent = running ? 'STOP' : 'START';
+      toggleBtn.className   = running ? 'stop'  : 'start';
+    }
+
+    function connect() {
+      ws = new WebSocket('ws://' + location.host + '/ws');
+      ws.onopen    = () => { wsStatusEl.textContent = 'Connected'; wsStatusEl.className = 'ok'; send({ cmd: 'getStatus' }); };
+      ws.onmessage = (e) => { try { applyStatus(JSON.parse(e.data)); } catch (_) {} };
+      ws.onclose   = () => { wsStatusEl.textContent = 'Reconnecting…'; wsStatusEl.className = 'err'; setTimeout(connect, 2000); };
+    }
+
+    kochSlider.addEventListener('input', () => {
+      updateKochDisplay(parseInt(kochSlider.value));
+      sendParam('kochLevel', parseInt(kochSlider.value));
+    });
+
+    charWpmSlider.addEventListener('input', () => {
+      const v = parseInt(charWpmSlider.value);
+      charWpmVal.textContent = v + ' WPM';
+      if (parseInt(effWpmSlider.value) > v) {
+        effWpmSlider.value = v; effWpmVal.textContent = v + ' WPM';
+        sendParam('effectiveWpm', v);
+      }
+      sendParam('charWpm', v);
+    });
+
+    effWpmSlider.addEventListener('input', () => {
+      let v = parseInt(effWpmSlider.value);
+      const cap = parseInt(charWpmSlider.value);
+      if (v > cap) { v = cap; effWpmSlider.value = cap; }
+      effWpmVal.textContent = v + ' WPM';
+      sendParam('effectiveWpm', v);
+    });
+
+    timingLog.addEventListener('change', () => sendParam('timingLog', timingLog.checked));
+
+    toggleBtn.addEventListener('click', () => send({ cmd: running ? 'stop' : 'start' }));
+
+    // Auto-submit on first keystroke; also accept explicit Enter.
+    copyInput.addEventListener('input', () => {
+      const v = copyInput.value.trim().toUpperCase();
+      if (running && !revealed && v.length >= 1) sendParam('answer', v);
+    });
+    copyInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const v = copyInput.value.trim().toUpperCase();
+        if (running && !revealed && v.length >= 1) sendParam('answer', v);
+      }
+    });
+
+    connect();
+  </script>
+</body>
+</html>
