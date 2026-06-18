@@ -6,18 +6,54 @@
 #include "secrets.h"
 #include "../lib/frotz/zork_frotz.h"
 
-/*
- * Story file to load from LittleFS.
- * LittleFS is mounted at /littlefs/ by LittleFS.begin(), so frotz's fopen()
- * finds the file there via the VFS layer. Change to switch games.
- */
-static const char* STORY_FILE = "/littlefs/zork1.z3";
-
 static AsyncWebServer server(80);
 static AsyncWebSocket ws("/ws");
 
-/* Forward declaration — used in send callback below. */
+/* Path buffer for the currently selected story file. */
+static char current_story_buf[64];
+
 static void send_to_client(uint32_t id, const char* text, size_t len);
+
+/* Returns true if `name` is a bare filename with a Z-machine extension (.z1-.z9). */
+static bool isStoryFile(const char* name) {
+    if (!name) return false;
+    size_t slen = strlen(name);
+    if (slen == 0 || slen > 48) return false;
+    if (strchr(name, '/') || strchr(name, '\\') || strstr(name, "..")) return false;
+    const char* dot = strrchr(name, '.');
+    if (!dot) return false;
+    char e1 = dot[1], e2 = dot[2];
+    if ((e1 != 'z' && e1 != 'Z') || e2 < '1' || e2 > '9' || dot[3] != '\0') return false;
+    return true;
+}
+
+// ── /api/games endpoint ───────────────────────────────────────────────────────
+
+static void handleGetGames(AsyncWebServerRequest* req) {
+    String json = "[";
+    bool first = true;
+    File root = LittleFS.open("/");
+    if (root) {
+        File f = root.openNextFile();
+        while (f) {
+            const char* raw = f.name();
+            /* file.name() may include a leading '/' on some ESP32 core versions. */
+            const char* name = (raw && raw[0] == '/') ? raw + 1 : raw;
+            if (isStoryFile(name)) {
+                if (!first) json += ",";
+                json += "\"";
+                json += name;
+                json += "\"";
+                first = false;
+            }
+            f.close();
+            f = root.openNextFile();
+        }
+        root.close();
+    }
+    json += "]";
+    req->send(200, "application/json", json);
+}
 
 // ── WebSocket handler ─────────────────────────────────────────────────────────
 
@@ -28,34 +64,22 @@ static void onWsEvent(AsyncWebSocket*, AsyncWebSocketClient* client,
         Serial.printf("[WS] #%u connected\n", client->id());
 
         if (zork_client_id != 0) {
-            /* Already playing — reject extra connections. */
             client->text("Game in progress. Try again later.");
             client->close();
             return;
         }
 
         zork_client_id = client->id();
-        xTaskCreatePinnedToCore(
-            zork_interpreter_task, "frotz",
-            24 * 1024,          /* stack bytes — frotz needs headroom for recursion */
-            nullptr, 1,
-            &zork_task_handle, 1    /* pin to core 1 */
-        );
+        /* Don't start frotz yet — the first data message selects the game. */
 
     } else if (type == WS_EVT_DISCONNECT) {
         Serial.printf("[WS] #%u disconnected\n", client->id());
 
         if (client->id() == zork_client_id) {
-            /*
-             * Force-kill the interpreter task. This is safe here because the
-             * task is either blocking on xQueueReceive (idle, waiting for input)
-             * or running frotz opcode logic with no locks held.
-             */
             if (zork_task_handle) {
                 vTaskDelete(zork_task_handle);
                 zork_task_handle = nullptr;
             }
-            /* Drain stale input so the next player starts clean. */
             char discard[ZORK_INPUT_MAX];
             while (xQueueReceive(zork_input_q, discard, 0) == pdTRUE) {}
             zork_client_id = 0;
@@ -66,11 +90,29 @@ static void onWsEvent(AsyncWebSocket*, AsyncWebSocketClient* client,
         if (info->final && info->index == 0 && info->len == len
                 && info->opcode == WS_TEXT
                 && client->id() == zork_client_id) {
+
             char line[ZORK_INPUT_MAX];
             size_t n = (len < ZORK_INPUT_MAX - 1) ? len : ZORK_INPUT_MAX - 1;
             memcpy(line, data, n);
             line[n] = '\0';
-            xQueueSend(zork_input_q, line, 0);
+
+            if (zork_task_handle == nullptr) {
+                /* No game running — treat this message as the game selection. */
+                if (!isStoryFile(line)) {
+                    client->text("[Invalid game selection.]\n");
+                    return;
+                }
+                snprintf(current_story_buf, sizeof(current_story_buf),
+                         "/littlefs/%s", line);
+                zork_story_path = current_story_buf;
+
+                xTaskCreatePinnedToCore(
+                    zork_interpreter_task, "frotz",
+                    24 * 1024, nullptr, 1, &zork_task_handle, 1
+                );
+            } else {
+                xQueueSend(zork_input_q, line, 0);
+            }
         }
     }
 }
@@ -110,11 +152,11 @@ void setup() {
         Serial.println("mDNS started: http://zork.local/");
     }
 
-    /* Wire up the frotz ↔ WebSocket bridge. */
-    zork_story_path = STORY_FILE;
+    zork_story_path = nullptr;
     zork_input_q    = xQueueCreate(4, ZORK_INPUT_MAX);
     zork_send_fn    = send_to_client;
 
+    server.on("/api/games", HTTP_GET, handleGetGames);
     ws.onEvent(onWsEvent);
     server.addHandler(&ws);
     server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
