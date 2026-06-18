@@ -36,17 +36,21 @@ On boot, the IP address and mDNS name are printed. They repeat every 5 s.
 
 `/ws` endpoint. Text frames only.
 
-- **Client → Server:** one line of player input (no newline)
+- **Client → Server (first message):** story filename, e.g. `zork1.z3` — starts the interpreter
+- **Client → Server (subsequent):** one line of player input (no newline)
 - **Server → Client:** interpreter output as raw text (may contain `\r\n`)
 
 The browser terminal echoes the player's input locally before sending,
 so the server never needs to echo it back.
 
+`GET /api/games` returns a JSON array of story filenames present in LittleFS,
+e.g. `["zork1.z3","hitchhiker.z5"]`. Only `.z1`–`.z9` files are included.
+
 ## Milestone Status
 
 1. **Echo terminal** ✓ — WebSocket echo confirmed working
-2. **Interpreter** ← current: frotz wired to WebSocket I/O
-3. **Game selector:** list LittleFS story files, pick on load
+2. **Interpreter** ✓ — frotz wired to WebSocket I/O
+3. **Game selector** ✓ — `/api/games` scans LittleFS; SPA shows list then terminal
 4. **File upload:** `/upload` endpoint to add story files from browser
 5. **Polish:** mDNS robustness, restart button, per-game LittleFS save slots
 
