@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<!--
+  Doom - Playable in a browser!
+
+  Here the `doom.wasm` WebAssembly module is loaded via JavaScript and its inputs
+  and output are connected to an HTML Canvas, making the game fully playable.
+
+  Both 'info' and 'error' messages from Doom are logged to the browser's console.
+
+  The Doom shareware WAD is always loaded as the game's content.
+
+  Saving of game progress is not supported.
+-->
+<html>
+  <head>
+    <title>Doom!</title>
+    <script type="text/javascript">
+
+      function setProgress(received, total) {
+        const pct = total > 0 ? Math.round(received / total * 100) : 0;
+        document.getElementById('progress-fill').style.width = pct + '%';
+        document.getElementById('loading-status').textContent =
+          total > 0 ? 'DOWNLOADING... ' + pct + '%'
+                    : 'DOWNLOADING... ' + Math.round(received / 1024) + ' KB';
+      }
+
+      function setStatus(msg) {
+        document.getElementById('progress-fill').style.width = '100%';
+        document.getElementById('loading-status').textContent = msg;
+      }
+
+      // Load Doom and attach it to the provided Canvas element
+      function loadDoomGame(canvas) {
+
+        let gameInited = false;
+        function fitCanvas() {
+          if (!gameInited) return;
+          const scale = Math.min(window.innerWidth / canvas.width, window.innerHeight / canvas.height);
+          canvas.style.width  = Math.round(canvas.width  * scale) + 'px';
+          canvas.style.height = Math.round(canvas.height * scale) + 'px';
+        }
+        window.addEventListener('resize', fitCanvas);
+
+        // This reference to the module instance's exported memory will be filled in
+        // once the module instance has been loaded successfully.
+        let moduleInstanceMemory = null;
+
+        let ctx = canvas.getContext('2d');
+        // An ImageData instance will be used to transfer the pixels of a Doom frame buffer to the HTML canvas
+        let scratchSpaceImageData = null; // Initialized once we know the width and height of Doom's framebuffer
+
+        //////////////////////////////////////////////////////////////////////////////
+        // Define all the non-trivial functions that we'll provide as imports to Doom
+        //////////////////////////////////////////////////////////////////////////////
+
+        function onGameInit(width, height) {
+          // Have the canvas be the exact same size as the Doom frame buffer,
+          // so canvas's pixels will be 1-to-1 to the pixels in the Doom frame buffer
+          canvas.width = width;
+          canvas.height = height;
+          scratchSpaceImageData = ctx.createImageData(width, height);
+          gameInited = true;
+          fitCanvas();
+          document.getElementById('loading').style.display = 'none';
+          canvas.focus();
+        }
+
+        function drawFrame(indexOfFrameBuffer) {
+          // Copy all pixels from the Doom frame buffer to the similarly sized ImageData.
+
+          let doomFrameBuffer = new Uint8Array(moduleInstanceMemory.buffer, indexOfFrameBuffer, canvas.width * canvas.height * 4);
+
+          for (var i = 0; i < (scratchSpaceImageData.data.length / 4); i++) {
+            // The pixels in an ImageData are made up of 32-bits each, with 8-bit color components ordered
+            // "RGBA", from low to high index. See: https://developer.mozilla.org/en-US/docs/Web/API/ImageData/data
+            //
+            // Doom Frame buffer pixels are also 32-bit, but have their 8-bit color components logically
+            // ordered "ARGB". But, these 32-bit values are stored in little-endian order (because
+            // WebAssembly always orders multi-byte values in a little-endian way), so the order of the
+            // bytes in each pixel are reversed, and actually ordered "BGRA", from low to high index.
+            scratchSpaceImageData.data[4*i+0] = doomFrameBuffer[4*i+2];  // Red
+            scratchSpaceImageData.data[4*i+1] = doomFrameBuffer[4*i+1];  // Green
+            scratchSpaceImageData.data[4*i+2] = doomFrameBuffer[4*i+0];  // Blue
+            scratchSpaceImageData.data[4*i+3] = 255;  // Alpha (make pixel fully opaque)
+          }
+
+          // And then copy the edited ImageData to the canvas's 2d context
+          ctx.putImageData(scratchSpaceImageData, 0, 0);
+        }
+
+        function timeInMilliseconds() {
+          return BigInt(Math.trunc(performance.now()));
+        }
+
+        function onInfoMessage(messagePtr, length) {
+          // Log all 'info' messages to the console
+          const message = readModuleMemoryAsUtf8String(moduleInstanceMemory, messagePtr, length);
+          console.log(`[Doom stdout] ${message}`);
+        }
+
+        function onErrorMessage(messagePtr, length) {
+          // Log all 'error' messages to the console
+          const message = readModuleMemoryAsUtf8String(moduleInstanceMemory, messagePtr, length);
+          console.error(`[Doom stderr] ${message}`);
+        }
+
+        //////////////////////////////////////////////////////////////////////////////
+        // Specify all the imports needed by Doom
+        //////////////////////////////////////////////////////////////////////////////
+
+        let imports = {
+          "loading": {
+            "onGameInit": onGameInit,
+            // Provide no WAD data, so the module defaults to using the Doom Shareware WAD
+            "wadSizes": () => {},
+            "readWads": () => {},
+          },
+          "ui": {
+            "drawFrame": drawFrame,
+          },
+          "runtimeControl": {
+            "timeInMilliseconds": timeInMilliseconds
+          },
+          "console": {
+            "onInfoMessage": onInfoMessage,
+            "onErrorMessage": onErrorMessage,
+          },
+          "gameSaving": {
+            // Provide no support for saving games
+            "sizeOfSaveGame": () => 0,
+            "readSaveGame": () => 0,
+            "writeSaveGame": () => 0,
+          },
+        };
+
+        //////////////////////////////////////////////////////////////////////////////
+        // Retrieve the Doom WebAssembly module, instantiate it with our imports,
+        // and then use the module instance to run Doom!
+        //////////////////////////////////////////////////////////////////////////////
+
+        (async () => {
+          const response = await fetch("assets/doom.wasm");
+          const total = parseInt(response.headers.get('Content-Length') || '0');
+          const reader = response.body.getReader();
+          const chunks = [];
+          let received = 0;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            received += value.length;
+            setProgress(received, total);
+          }
+          const buffer = new Uint8Array(received);
+          let pos = 0;
+          for (const chunk of chunks) { buffer.set(chunk, pos); pos += chunk.length; }
+
+          setStatus('COMPILING...');
+          const { instance } = await WebAssembly.instantiate(buffer.buffer, imports);
+
+          setStatus('STARTING...');
+          let exports = instance.exports;
+
+          // Cache a reference to the module's exported memory, for use by functions imported by the module
+          moduleInstanceMemory = exports.memory;
+
+          // Associate some JavaScript key values with 'Doom key' values that were exported from the
+          // WebAssembly module (E.g. when the user presses the "Control" key we want to associate this
+          // with the KEY_FIRE value)
+          const doomKeyFromJavascriptKey = new Map([
+            ["ArrowLeft", exports.KEY_LEFTARROW],
+            ["ArrowRight", exports.KEY_RIGHTARROW],
+            ["ArrowUp", exports.KEY_UPARROW],
+            ["ArrowDown", exports.KEY_DOWNARROW],
+            [",", exports.KEY_STRAFE_L],
+            [".", exports.KEY_STRAFE_R],
+            ["Control", exports.KEY_FIRE],
+            [" ", exports.KEY_USE],
+            ["Shift", exports.KEY_SHIFT],
+            ["Tab", exports.KEY_TAB],
+            ["Escape", exports.KEY_ESCAPE],
+            ["Enter", exports.KEY_ENTER],
+            ["Backspace", exports.KEY_BACKSPACE],
+            ["Alt", exports.KEY_ALT],
+          ]);
+
+          // Translate a KeyboardEvent into a possible numerical Doom key, 'consuming' the KeyboardEvent
+          // in the case that such a translation is possible, and returning `null` otherwise.
+          function convertKeyEventToDoomKey(javaScriptKeyEvent) {
+            let correspondingDoomKey = null;
+            if (doomKeyFromJavascriptKey.has(javaScriptKeyEvent.key)) {
+              // Support keys (e.g. "Control") that we've explicitly associated with a Doom key
+              correspondingDoomKey = doomKeyFromJavascriptKey.get(javaScriptKeyEvent.key);
+            } else if (javaScriptKeyEvent.key.length == 1) {
+              // Support keys that are just a single character (e.g. '1'), and in that case
+              // the corresponding Doom key is just the ASCII code of that character.
+              correspondingDoomKey = javaScriptKeyEvent.key.charCodeAt(0);
+            }
+
+            if (correspondingDoomKey !== null) {
+              // If this key event maps to a Doom key then we are going to forward this
+              // user interaction to Doom and should therefore 'consume' the key event.
+              javaScriptKeyEvent.stopPropagation();
+              javaScriptKeyEvent.preventDefault();
+            }
+
+            return correspondingDoomKey;
+          }
+
+          // Listen for keyboard events on the canvas and forward the appropriate ones to Doom
+          canvas.addEventListener('keydown', function(event) {
+            const doomKey = convertKeyEventToDoomKey(event);
+            if (doomKey !== null) {
+              exports.reportKeyDown(doomKey);
+            }
+          });
+          canvas.addEventListener('keyup', function(event) {
+            const doomKey = convertKeyEventToDoomKey(event);
+            if (doomKey !== null) {
+              exports.reportKeyUp(doomKey);
+            }
+          });
+
+          // Mouse / pointer lock — click canvas to capture, Escape to release
+          let pendingMouseX = 0;
+          let mouseTurnRight = false, mouseTurnLeft = false;
+          const MOUSE_SENSITIVITY = 3; // px of movement per tick needed to hold a turn key
+
+          canvas.addEventListener('click', () => {
+            if (!document.pointerLockElement) canvas.requestPointerLock();
+          });
+          canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+          document.addEventListener('pointerlockchange', () => {
+            if (!document.pointerLockElement) {
+              if (mouseTurnRight) { exports.reportKeyUp(exports.KEY_RIGHTARROW); mouseTurnRight = false; }
+              if (mouseTurnLeft)  { exports.reportKeyUp(exports.KEY_LEFTARROW);  mouseTurnLeft  = false; }
+            }
+          });
+
+          document.addEventListener('mousemove', (e) => {
+            if (document.pointerLockElement === canvas) pendingMouseX += e.movementX;
+          });
+          document.addEventListener('mousedown', (e) => {
+            if (document.pointerLockElement !== canvas) return;
+            if (e.button === 0) exports.reportKeyDown(exports.KEY_FIRE);
+            if (e.button === 2) exports.reportKeyDown(exports.KEY_USE);
+          });
+          document.addEventListener('mouseup', (e) => {
+            if (e.button === 0) exports.reportKeyUp(exports.KEY_FIRE);
+            if (e.button === 2) exports.reportKeyUp(exports.KEY_USE);
+          });
+
+          // Initialize Doom — onGameInit() fires during this call and hides the loading overlay
+          exports.initGame();
+
+          // Process mouse and tick Doom at 35 fps; mouse must be handled before tickGame()
+          setInterval(() => {
+            const newRight = pendingMouseX >  MOUSE_SENSITIVITY;
+            const newLeft  = pendingMouseX < -MOUSE_SENSITIVITY;
+            pendingMouseX = 0;
+            if (newRight !== mouseTurnRight) {
+              newRight ? exports.reportKeyDown(exports.KEY_RIGHTARROW) : exports.reportKeyUp(exports.KEY_RIGHTARROW);
+              mouseTurnRight = newRight;
+            }
+            if (newLeft !== mouseTurnLeft) {
+              newLeft ? exports.reportKeyDown(exports.KEY_LEFTARROW) : exports.reportKeyUp(exports.KEY_LEFTARROW);
+              mouseTurnLeft = newLeft;
+            }
+            exports.tickGame();
+          }, 1000 / 35);
+        })();
+      }
+
+      // Interpret a chuck of bytes, in a memory exported from a WebAssembly module, as a UTF-8 string
+      function readModuleMemoryAsUtf8String(moduleMemory, offsetIntoMemory, stringByteLength) {
+        const buffer8 = new Uint8Array(moduleMemory.buffer);
+
+        const dec = new TextDecoder("utf-8", { fatal: false });
+        const data = buffer8.slice(offsetIntoMemory, offsetIntoMemory + stringByteLength);
+        return dec.decode(data);
+      }
+
+      // On page load, start up Doom
+      addEventListener("load", (event) => {
+        let canvas = document.getElementById("DoomGame");
+        loadDoomGame(canvas);
+      });
+    </script>
+    <style>
+      /*
+        Keyboard input only passes to an HTML canvas when that canvas has focus.
+
+        Draw the canvas a little bit transparent when it doesn't have focus to better communicate
+        the state of "not receiving user input" to the user.
+      */
+      canvas#DoomGame { opacity: 80%; image-rendering: pixelated; }
+      canvas#DoomGame:focus { opacity: 100%; }
+
+      body {
+        margin: 0;
+        padding: 0;
+        background: #000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      #loading {
+        position: fixed;
+        inset: 0;
+        background: #000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-family: monospace;
+      }
+      #loading h1 {
+        font-size: 5rem;
+        letter-spacing: 0.5rem;
+        margin: 0 0 2rem 0;
+        color: #c00;
+        text-shadow: 0 0 20px #c00;
+      }
+      #progress-track {
+        width: 320px;
+        height: 18px;
+        border: 2px solid #c00;
+        margin-bottom: 1rem;
+        background: #111;
+      }
+      #progress-fill {
+        height: 100%;
+        width: 0%;
+        background: #c00;
+        transition: width 0.1s linear;
+      }
+      #loading-status {
+        color: #888;
+        font-size: 0.85rem;
+        letter-spacing: 0.15rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loading">
+      <h1>DOOM</h1>
+      <div id="progress-track"><div id="progress-fill"></div></div>
+      <div id="loading-status">DOWNLOADING...</div>
+    </div>
+    <canvas id="DoomGame" tabindex="0"></canvas>
+  </body>
+</html>
