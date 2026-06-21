@@ -1,0 +1,184 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 540"
+     font-family="'Courier New',monospace">
+
+  <!-- Background -->
+  <rect width="780" height="540" fill="#f5f5f0"/>
+
+  <!-- Title -->
+  <text x="390" y="26" text-anchor="middle" font-size="15" font-weight="bold" fill="#1a1a1a">
+    ESP32 Clicker — Hardware Wiring
+  </text>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ESP32-S3 board
+       ═══════════════════════════════════════════════════════════════════ -->
+  <rect x="290" y="42" width="190" height="388" rx="8"
+        fill="#2c3e50" stroke="#3498db" stroke-width="2"/>
+  <text x="385" y="64" text-anchor="middle" font-size="13" font-weight="bold" fill="white">ESP32-S3</text>
+  <text x="385" y="78" text-anchor="middle" font-size="9" fill="#7fb3d3">N16R8 · DevKitC-1</text>
+
+  <!-- Left-edge pin labels (inside) -->
+  <text x="297" y="92"  font-size="9" fill="#a8e6a3">GPIO1</text>
+  <text x="297" y="115" font-size="9" fill="#a8e6a3">GPIO2</text>
+  <text x="297" y="138" font-size="9" fill="#a8e6a3">GPIO42</text>
+  <text x="297" y="292" font-size="9" fill="#f5c98a">GPIO41</text>
+  <text x="297" y="315" font-size="9" fill="#f5c98a">GPIO40</text>
+  <text x="297" y="338" font-size="9" fill="#f5c98a">GPIO39</text>
+  <text x="297" y="375" font-size="9" fill="#ff9999">3V3</text>
+  <text x="297" y="398" font-size="9" fill="#aaa">GND</text>
+
+  <!-- Right-edge pin labels (inside, right-aligned) -->
+  <text x="473" y="245" text-anchor="end" font-size="9" fill="#88ccff">GPIO8 SDA</text>
+  <text x="473" y="260" text-anchor="end" font-size="9" fill="#88ccff">GPIO9 SCL</text>
+  <text x="473" y="375" text-anchor="end" font-size="9" fill="#ff9999">3V3</text>
+  <text x="473" y="398" text-anchor="end" font-size="9" fill="#aaa">GND</text>
+
+  <!-- Left-edge pin dots -->
+  <circle cx="290" cy="88"  r="4" fill="#a8e6a3" stroke="#27ae60" stroke-width="1.5"/>
+  <circle cx="290" cy="111" r="4" fill="#a8e6a3" stroke="#27ae60" stroke-width="1.5"/>
+  <circle cx="290" cy="134" r="4" fill="#a8e6a3" stroke="#27ae60" stroke-width="1.5"/>
+  <circle cx="290" cy="288" r="4" fill="#f5c98a" stroke="#e67e22" stroke-width="1.5"/>
+  <circle cx="290" cy="311" r="4" fill="#f5c98a" stroke="#e67e22" stroke-width="1.5"/>
+  <circle cx="290" cy="334" r="4" fill="#f5c98a" stroke="#e67e22" stroke-width="1.5"/>
+  <circle cx="290" cy="371" r="4" fill="#e08888" stroke="#c0392b" stroke-width="1.5"/>
+  <circle cx="290" cy="394" r="4" fill="#777"    stroke="#555"    stroke-width="1.5"/>
+
+  <!-- Right-edge pin dots -->
+  <circle cx="480" cy="241" r="4" fill="#88ccff" stroke="#2980b9" stroke-width="1.5"/>
+  <circle cx="480" cy="256" r="4" fill="#88ccff" stroke="#2980b9" stroke-width="1.5"/>
+  <circle cx="480" cy="371" r="4" fill="#e08888" stroke="#c0392b" stroke-width="1.5"/>
+  <circle cx="480" cy="394" r="4" fill="#777"    stroke="#555"    stroke-width="1.5"/>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       Encoder A
+       ═══════════════════════════════════════════════════════════════════ -->
+  <rect x="28" y="55" width="166" height="155" rx="6"
+        fill="#1a4a2a" stroke="#27ae60" stroke-width="2"/>
+  <text x="111" y="75" text-anchor="middle" font-size="12" font-weight="bold" fill="white">Encoder A</text>
+  <text x="111" y="88" text-anchor="middle" font-size="8" fill="#a8e6a3">rotate: holdMs · press: start/stop</text>
+
+  <!-- Encoder A pin labels -->
+  <text x="188" y="92"  text-anchor="end" font-size="9" fill="#a8e6a3">CLK</text>
+  <text x="188" y="115" text-anchor="end" font-size="9" fill="#a8e6a3">DT</text>
+  <text x="188" y="138" text-anchor="end" font-size="9" fill="#a8e6a3">SW</text>
+  <text x="188" y="161" text-anchor="end" font-size="9" fill="#ff9999">VCC</text>
+  <text x="188" y="184" text-anchor="end" font-size="9" fill="#aaa">GND</text>
+
+  <!-- Encoder A pin dots -->
+  <circle cx="194" cy="88"  r="4" fill="#a8e6a3" stroke="#27ae60" stroke-width="1.5"/>
+  <circle cx="194" cy="111" r="4" fill="#a8e6a3" stroke="#27ae60" stroke-width="1.5"/>
+  <circle cx="194" cy="134" r="4" fill="#a8e6a3" stroke="#27ae60" stroke-width="1.5"/>
+  <circle cx="194" cy="157" r="4" fill="#e08888" stroke="#c0392b" stroke-width="1.5"/>
+  <circle cx="194" cy="180" r="4" fill="#777"    stroke="#555"    stroke-width="1.5"/>
+
+  <!-- Encoder A signal wires -->
+  <line x1="194" y1="88"  x2="290" y2="88"  stroke="#27ae60" stroke-width="2"/>
+  <line x1="194" y1="111" x2="290" y2="111" stroke="#27ae60" stroke-width="2"/>
+  <line x1="194" y1="134" x2="290" y2="134" stroke="#27ae60" stroke-width="2"/>
+
+  <!-- Encoder A wire labels -->
+  <text x="242" y="84"  text-anchor="middle" font-size="8" fill="#27ae60">GPIO1</text>
+  <text x="242" y="107" text-anchor="middle" font-size="8" fill="#27ae60">GPIO2</text>
+  <text x="242" y="130" text-anchor="middle" font-size="8" fill="#27ae60">GPIO42</text>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       Encoder B
+       ═══════════════════════════════════════════════════════════════════ -->
+  <rect x="28" y="255" width="166" height="155" rx="6"
+        fill="#4a3a1a" stroke="#e67e22" stroke-width="2"/>
+  <text x="111" y="275" text-anchor="middle" font-size="12" font-weight="bold" fill="white">Encoder B</text>
+  <text x="111" y="288" text-anchor="middle" font-size="8" fill="#f5c98a">rotate: waitMs · press: (reserved)</text>
+
+  <!-- Encoder B pin labels -->
+  <text x="188" y="292" text-anchor="end" font-size="9" fill="#f5c98a">CLK</text>
+  <text x="188" y="315" text-anchor="end" font-size="9" fill="#f5c98a">DT</text>
+  <text x="188" y="338" text-anchor="end" font-size="9" fill="#f5c98a">SW</text>
+  <text x="188" y="361" text-anchor="end" font-size="9" fill="#ff9999">VCC</text>
+  <text x="188" y="384" text-anchor="end" font-size="9" fill="#aaa">GND</text>
+
+  <!-- Encoder B pin dots -->
+  <circle cx="194" cy="288" r="4" fill="#f5c98a" stroke="#e67e22" stroke-width="1.5"/>
+  <circle cx="194" cy="311" r="4" fill="#f5c98a" stroke="#e67e22" stroke-width="1.5"/>
+  <circle cx="194" cy="334" r="4" fill="#f5c98a" stroke="#e67e22" stroke-width="1.5"/>
+  <circle cx="194" cy="357" r="4" fill="#e08888" stroke="#c0392b" stroke-width="1.5"/>
+  <circle cx="194" cy="380" r="4" fill="#777"    stroke="#555"    stroke-width="1.5"/>
+
+  <!-- Encoder B signal wires -->
+  <line x1="194" y1="288" x2="290" y2="288" stroke="#e67e22" stroke-width="2"/>
+  <line x1="194" y1="311" x2="290" y2="311" stroke="#e67e22" stroke-width="2"/>
+  <line x1="194" y1="334" x2="290" y2="334" stroke="#e67e22" stroke-width="2"/>
+
+  <!-- Encoder B wire labels -->
+  <text x="242" y="284" text-anchor="middle" font-size="8" fill="#e67e22">GPIO41</text>
+  <text x="242" y="307" text-anchor="middle" font-size="8" fill="#e67e22">GPIO40</text>
+  <text x="242" y="330" text-anchor="middle" font-size="8" fill="#e67e22">GPIO39</text>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       4x20 I2C LCD
+       ═══════════════════════════════════════════════════════════════════ -->
+  <rect x="568" y="152" width="184" height="130" rx="6"
+        fill="#1b3d6e" stroke="#2980b9" stroke-width="2"/>
+  <text x="660" y="174" text-anchor="middle" font-size="12" font-weight="bold" fill="white">4&#xD7;20 LCD</text>
+  <text x="660" y="188" text-anchor="middle" font-size="9" fill="#7fb3d3">I&#xB2;C &#xB7; addr 0x27 &#xB7; VCC=3.3V</text>
+
+  <!-- LCD pin labels -->
+  <text x="576" y="215" font-size="9" fill="#aaa">GND</text>
+  <text x="576" y="230" font-size="9" fill="#ff9999">VCC</text>
+  <text x="576" y="245" font-size="9" fill="#88ccff">SDA</text>
+  <text x="576" y="260" font-size="9" fill="#88ccff">SCL</text>
+
+  <!-- LCD pin dots -->
+  <circle cx="568" cy="211" r="4" fill="#777"    stroke="#555"    stroke-width="1.5"/>
+  <circle cx="568" cy="226" r="4" fill="#e08888" stroke="#c0392b" stroke-width="1.5"/>
+  <circle cx="568" cy="241" r="4" fill="#88ccff" stroke="#2980b9" stroke-width="1.5"/>
+  <circle cx="568" cy="256" r="4" fill="#88ccff" stroke="#2980b9" stroke-width="1.5"/>
+
+  <!-- LCD I2C wires -->
+  <line x1="568" y1="241" x2="480" y2="241" stroke="#2980b9" stroke-width="2"/>
+  <line x1="568" y1="256" x2="480" y2="256" stroke="#2980b9" stroke-width="2"/>
+
+  <!-- LCD wire labels -->
+  <text x="524" y="237" text-anchor="middle" font-size="8" fill="#2980b9">SDA / GPIO8</text>
+  <text x="524" y="252" text-anchor="middle" font-size="8" fill="#2980b9">SCL / GPIO9</text>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       Planned: 100µF decoupling cap on LCD VCC/GND
+       ═══════════════════════════════════════════════════════════════════ -->
+  <rect x="568" y="305" width="184" height="120" rx="6"
+        fill="#2a2a1a" stroke="#c8a000" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="660" y="325" text-anchor="middle" font-size="11" font-weight="bold" fill="#c8a000">Planned</text>
+  <text x="660" y="340" text-anchor="middle" font-size="9" fill="#c8a000">100&#xB5;F electrolytic cap</text>
+  <text x="660" y="353" text-anchor="middle" font-size="8" fill="#aaa">place across LCD VCC / GND</text>
+
+  <!-- Capacitor symbol -->
+  <line x1="650" y1="362" x2="650" y2="374" stroke="#c8a000" stroke-width="1.5"/>
+  <line x1="638" y1="374" x2="662" y2="374" stroke="#c8a000" stroke-width="2.5"/>
+  <line x1="638" y1="379" x2="662" y2="379" stroke="#c8a000" stroke-width="2.5"/>
+  <line x1="650" y1="379" x2="650" y2="391" stroke="#c8a000" stroke-width="1.5"/>
+  <text x="667" y="377" font-size="9" fill="#c8a000">+  long leg &#x2192; VCC</text>
+  <text x="667" y="391" font-size="9" fill="#aaa">&#x2212;  short leg / stripe &#x2192; GND</text>
+  <text x="660" y="415" text-anchor="middle" font-size="8" fill="#888">reduces backlight flicker</text>
+
+  <!-- VCC wire from LCD to cap (dashed, planned) -->
+  <line x1="568" y1="226" x2="555" y2="226" stroke="#c0392b" stroke-width="1.5"/>
+  <line x1="555" y1="226" x2="555" y2="374" stroke="#c0392b" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <line x1="555" y1="374" x2="568" y2="374" stroke="#c0392b" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+  <!-- GND wire from LCD to cap (dashed, planned) -->
+  <line x1="568" y1="211" x2="549" y2="211" stroke="#555" stroke-width="1.5"/>
+  <line x1="549" y1="211" x2="549" y2="379" stroke="#555" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <line x1="549" y1="379" x2="568" y2="379" stroke="#555" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       Power note
+       ═══════════════════════════════════════════════════════════════════ -->
+  <rect x="28" y="503" width="724" height="28" rx="4" fill="#ebebeb" stroke="#ccc" stroke-width="1"/>
+  <circle cx="46"  cy="517" r="5" fill="#e08888" stroke="#c0392b" stroke-width="1.5"/>
+  <text x="55"  y="521" font-size="10" fill="#c0392b" font-weight="bold">VCC &#x2192; 3.3V only</text>
+  <circle cx="162" cy="517" r="5" fill="#777" stroke="#555" stroke-width="1.5"/>
+  <text x="171" y="521" font-size="10" fill="#555" font-weight="bold">GND</text>
+  <text x="230" y="521" font-size="10" fill="#444">
+    Connect all VCC pins to any 3V3 pin and all GND pins to any GND pin on the ESP32.
+  </text>
+
+</svg>

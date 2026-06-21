@@ -140,6 +140,13 @@
     <button id="toggle-btn" class="start">START</button>
 
     <div id="ws-status">Connecting…</div>
+
+    <details style="margin-top:1.2rem">
+      <summary style="cursor:pointer;color:#666;font-size:0.8rem">Diagnostics</summary>
+      <div style="margin-top:0.6rem;font-size:0.8rem;color:#888">
+        I2C devices: <span id="i2c-devices">…</span>
+      </div>
+    </details>
   </div>
 
   <script>
@@ -252,6 +259,13 @@
     });
 
     connect();
+
+    fetch('/sysinfo').then(r => r.json()).then(d => {
+      const el = document.getElementById('i2c-devices');
+      el.textContent = d.i2c && d.i2c.length ? d.i2c.join(', ') : 'none found';
+    }).catch(() => {
+      document.getElementById('i2c-devices').textContent = 'unavailable';
+    });
   </script>
 </body>
 </html>
