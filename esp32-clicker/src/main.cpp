@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <ESPmDNS.h>
 #include <LittleFS.h>
 #include "secrets.h"
 #include "ClickerCmd.h"
@@ -8,11 +9,13 @@
 #include "WebUI.h"
 #include "AutoCast.h"
 #include "Hold.h"
+#include "LocalUI.h"
 
 static AutoCast      autoCastMode;
 static Hold          holdMode;
 static ClickerMode*  modes[]   = { &autoCastMode, &holdMode };
 static int           modeCount = 2;
+static LocalUI       localUI(modes, modeCount);
 
 QueueHandle_t  cmdQueue;
 static ClickerMode* activeMode  = nullptr;
@@ -88,6 +91,8 @@ void setup() {
     Serial.println("HID stub mode (dev build) — USB Serial active.");
 #endif
 
+    localUI.begin();
+
     // Phase 6 will add a captive-portal fallback here.
     Serial.printf("Connecting to %s", WIFI_SSID);
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -102,14 +107,17 @@ void setup() {
         Serial.println("WiFi failed. Check secrets.h. Halting.");
         while (true) delay(1000);
     }
-    Serial.printf("Connected. Open http://%s/ on your phone.\n",
+    WiFi.setTxPower(WIFI_POWER_8_5dBm);  // reduce rail sag from transmit bursts
+    Serial.printf("Connected. Open http://clicker.local/ or http://%s/\n",
                   WiFi.localIP().toString().c_str());
+    MDNS.begin("clicker");
 
     if (!LittleFS.begin(true)) {
         Serial.println("LittleFS mount failed — re-run uploadfs.");
     }
 
     webui_begin(modes, modeCount);
+    webui_set_sysinfo(localUI.i2cScanJson());
     activeMode = modes[0];
     webui_push(activeMode->statusJson());
     Serial.println("Web server started.");
@@ -124,9 +132,11 @@ void loop() {
 
     uint32_t now = millis();
 
+    localUI.poll(now, activeMode);
+
     // Re-print IP every 5 s so a late-connecting serial monitor still sees it.
     if (now - lastIpPrint >= 5000) {
-        Serial.printf("http://%s/\n", WiFi.localIP().toString().c_str());
+        Serial.printf("http://clicker.local/ (http://%s/)\n", WiFi.localIP().toString().c_str());
         lastIpPrint = now;
     }
 

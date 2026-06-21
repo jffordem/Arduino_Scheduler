@@ -13,3 +13,6 @@ void webui_push(const String& json);
 
 // Must be called every loop() to free closed WebSocket connections.
 void webui_cleanup();
+
+// Store system info JSON (e.g. I2C scan results) served at GET /sysinfo.
+void webui_set_sysinfo(const String& json);

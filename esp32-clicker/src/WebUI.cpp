@@ -7,6 +7,7 @@
 static AsyncWebServer server(80);
 static AsyncWebSocket ws("/ws");
 static String         lastStatus;
+static String         sysinfoJson;
 
 static void onWsEvent(AsyncWebSocket* srv, AsyncWebSocketClient* client,
                       AwsEventType type, void* arg, uint8_t* data, size_t len)
@@ -71,6 +72,11 @@ void webui_begin(ClickerMode** /*modes*/, int /*modeCount*/) {
         req->send(LittleFS, "/index.html", "text/html");
     });
 
+    server.on("/sysinfo", HTTP_GET, [](AsyncWebServerRequest* req) {
+        req->send(200, "application/json",
+                  sysinfoJson.length() ? sysinfoJson : "{}");
+    });
+
     // Phase 5: will return built-in macro names. Empty list for now.
     server.on("/macros", HTTP_GET, [](AsyncWebServerRequest* req) {
         req->send(200, "application/json", "[]");
@@ -90,4 +96,8 @@ void webui_push(const String& json) {
 
 void webui_cleanup() {
     ws.cleanupClients();
+}
+
+void webui_set_sysinfo(const String& json) {
+    sysinfoJson = json;
 }

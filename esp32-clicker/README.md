@@ -21,9 +21,55 @@ use cases and adds a browser UI so you never need to touch the device mid-game.
 - ESP32-S3 (N16R8 or similar with native USB OTG)
 - USB-C cable: ESP32-S3 → gaming PC (carries both power and HID)
 - Phone or tablet on the same WiFi network as the ESP32
+- 4×20 character LCD with I²C backpack (PCF8574, addr 0x27)
+- Two rotary encoder + push-button combos (KY-040 style), labeled A and B
 
-No additional hardware. The ESP32-S3's USB port acts as both power input and HID
-device — the game PC sees it as a standard USB keyboard + mouse.
+### Wiring
+
+![Wiring diagram](wiring.svg)
+
+| Component | Pin | ESP32-S3 GPIO |
+|-----------|-----|---------------|
+| Encoder A | CLK | 1 |
+| Encoder A | DT  | 2 |
+| Encoder A | SW  | 42 |
+| Encoder B | CLK | 41 |
+| Encoder B | DT  | 40 |
+| Encoder B | SW  | 39 |
+| LCD       | SDA | 8 |
+| LCD       | SCL | 9 |
+| All       | VCC | 3.3V |
+| All       | GND | GND |
+
+GPIO 1, 2, 42 are adjacent on the right side of the DevKitC-1 board, as are
+41, 40, 39 — wire each encoder to three consecutive pins for tidy cabling.
+
+SW pins use `INPUT_PULLUP` — no external resistors needed.
+
+**LCD power:** Run VCC at 3.3V only. The PCF8574 backpack's pull-up resistors
+connect SDA/SCL to VCC, so powering at 5V drives 5V into the ESP32 GPIO pins
+(max 3.6V) and will hang or damage the board. If contrast is too faint, adjust
+the trimmer pot on the backpack — turn it toward minimum for 3.3V operation.
+A 100µF decoupling cap across VCC/GND reduces backlight flicker caused by I²C
+supply ripple. **Planned:** add this cap and evaluate whether it stabilises the
+backlight sufficiently at 3.3V; if not, add a bidirectional I²C level shifter
+(BSS138-based) so 5V VCC becomes safe for the LCD while keeping SDA/SCL at
+3.3V for the ESP32.
+
+If the display stays blank after contrast adjustment, the I²C address may be
+0x3F — `LocalUI::begin()` scans the bus at startup and logs found addresses to
+Serial, and the web UI shows them under Diagnostics.
+
+### Local UI behaviour
+
+| Control | Action |
+|---------|--------|
+| Encoder A — rotate | Cycle through modes (stops active mode on switch) |
+| Encoder A — press  | Toggle start / stop |
+| Encoder B — rotate | (reserved — future use) |
+| Encoder B — press  | (reserved — future use) |
+
+The LCD shows the active mode name, running status, and WiFi IP address.
 
 ---
 
@@ -216,7 +262,8 @@ ESP32 → browser (pushed on state change and every ~200 ms while running):
 **Option A — secrets.h (recommended for home use)**
 
 Define `WIFI_SSID` and `WIFI_PASSWORD` in `secrets.h` before flashing. The ESP32
-connects at boot and prints its IP to the serial monitor.
+connects at boot and is reachable at `http://clicker.local/` (mDNS) or by the
+raw IP printed to the serial monitor.
 
 **Option B — captive portal (first-boot fallback)**
 
@@ -235,11 +282,14 @@ The ESP32-S3-DevKitC-1 has two USB connectors that serve different purposes:
 
 | Port | Chip | Windows device | Purpose |
 |---|---|---|---|
-| Micro-USB | CH343 UART bridge | COM5 (or similar) | Serial monitor + programming |
-| USB-C | Native ESP32-S3 USB | COM6 in dev / HID device in hid | HID output to gaming PC |
+| Micro-USB | CH343 UART bridge | COM3 (or similar — varies by board) | Serial monitor + programming |
+| USB-C | Native ESP32-S3 USB | COM4 in dev / HID device in hid | HID output to gaming PC |
 
-**Serial output always comes through COM5** (UART0 via CH343), regardless of
-which build is running. Keep the serial monitor pointed there.
+**Serial output always comes through the CH343 port** (UART0), regardless of
+which build is running. Keep the serial monitor pointed there. Windows assigns
+COM numbers per-board so the exact port may differ — check Device Manager for
+"USB-Enhanced-SERIAL CH343" to find yours, then update `monitor_port` and
+`upload_port` in `platformio.ini`.
 
 ### Two build environments (platformio.ini)
 
